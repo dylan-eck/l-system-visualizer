@@ -1,0 +1,15 @@
+build*
+.vscode
+.cache
+_deps
+
+# vulkan
+*.spv
+
+# apple
+.DS_Store
+__MACOSX/
+.AppleDouble
+.LSOverride
+Icon[]
+._*
