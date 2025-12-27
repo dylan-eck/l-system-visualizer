@@ -1,3 +1,6 @@
+#include <spdlog/spdlog.h>
+#include <vulkan/vk_enum_string_helper.h>
+
 #include "PipelineBuilder.h"
 
 namespace lsv {
@@ -65,13 +68,13 @@ VkPipeline PipelineBuilder::build(VkDevice device) {
     }
 }
 
-PipelineBuilder PipelineBuilder::setLayout(VkPipelineLayout layout) {
+PipelineBuilder &PipelineBuilder::setLayout(VkPipelineLayout layout) {
     this->layout = layout;
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::setShaders(VkShaderModule vertexShader,
-                                            VkShaderModule fragmentShader) {
+PipelineBuilder &PipelineBuilder::setShaders(VkShaderModule vertexShader,
+                                             VkShaderModule fragmentShader) {
     shaderStages.clear();
 
     VkPipelineShaderStageCreateInfo vertexInfo{
@@ -92,7 +95,7 @@ PipelineBuilder PipelineBuilder::setShaders(VkShaderModule vertexShader,
     return *this;
 }
 
-PipelineBuilder
+PipelineBuilder &
 PipelineBuilder::setInputTopology(VkPrimitiveTopology topology) {
     inputAssemblyState.topology = topology;
     inputAssemblyState.primitiveRestartEnable = VK_FALSE;
@@ -100,22 +103,22 @@ PipelineBuilder::setInputTopology(VkPrimitiveTopology topology) {
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::setPolygonMode(VkPolygonMode polygonMode) {
+PipelineBuilder &PipelineBuilder::setPolygonMode(VkPolygonMode polygonMode) {
     rasterizationState.polygonMode = polygonMode;
     rasterizationState.lineWidth = 1.0f;
 
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::setCullMode(VkCullModeFlags cullMode,
-                                             VkFrontFace frontFace) {
+PipelineBuilder &PipelineBuilder::setCullMode(VkCullModeFlags cullMode,
+                                              VkFrontFace frontFace) {
     rasterizationState.cullMode = cullMode;
     rasterizationState.frontFace = frontFace;
 
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::setMultisampleDisabled() {
+PipelineBuilder &PipelineBuilder::setMultisampleDisabled() {
     multisampleState.sampleShadingEnable = VK_FALSE;
     multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
     multisampleState.pSampleMask = nullptr;
@@ -125,7 +128,7 @@ PipelineBuilder PipelineBuilder::setMultisampleDisabled() {
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::setBlendingDisabled() {
+PipelineBuilder &PipelineBuilder::setBlendingDisabled() {
     colorBlendState.colorWriteMask =
         VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -134,7 +137,7 @@ PipelineBuilder PipelineBuilder::setBlendingDisabled() {
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::setColorAttachmentFormat(VkFormat format) {
+PipelineBuilder &PipelineBuilder::setColorAttachmentFormat(VkFormat format) {
     colorAttachmentFormat = format;
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachmentFormats = &colorAttachmentFormat;
@@ -142,13 +145,13 @@ PipelineBuilder PipelineBuilder::setColorAttachmentFormat(VkFormat format) {
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::setDepthFormat(VkFormat format) {
+PipelineBuilder &PipelineBuilder::setDepthFormat(VkFormat format) {
     renderingInfo.depthAttachmentFormat = format;
 
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::setDepthTestDisabled() {
+PipelineBuilder &PipelineBuilder::setDepthTestDisabled() {
     depthStencilState.depthTestEnable = VK_FALSE;
     depthStencilState.depthWriteEnable = VK_FALSE;
     depthStencilState.depthCompareOp = VK_COMPARE_OP_NEVER;

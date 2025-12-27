@@ -16,6 +16,9 @@ elseif(WIN32)
   target_compile_definitions(${PROJECT_NAME} PRIVATE LSV_PLATFORM_WINDOWS)
 endif()
 
+target_compile_options(${PROJECT_NAME} PRIVATE -Wno-nullability-completeness
+                                               -Wno-nullability-extension)
+
 find_package(SDL2 REQUIRED)
 find_package(Vulkan REQUIRED)
 find_program(SLANGC_EXECUTABLE slangc HINTS $ENV{VULKAN_SDK}/bin REQUIRED)
@@ -47,10 +50,13 @@ add_dependencies(${PROJECT_NAME} shaders)
 
 include(FetchContent)
 
+message("-- Fetching spdlog")
 FetchContent_Declare(
   spdlog
-  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_REPOSITORY https://github.com/gabime/spdlog
   GIT_TAG v1.16.0)
+FetchContent_MakeAvailable(spdlog)
+message("-- Fetching spdlog - done")
 set(SPDLOG_BUILD_EXAMPLE
     OFF
     CACHE BOOL "" FORCE)
@@ -68,27 +74,44 @@ target_compile_definitions(
   ${PROJECT_NAME}
   PRIVATE $<$<CONFIG:Debug>:SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG>)
 
+message("-- Fetching vk-bootstrap")
 FetchContent_Declare(
   vk-bootstrap
   GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
   GIT_TAG v1.4.336)
+FetchContent_MakeAvailable(vk-bootstrap)
+message("-- Fetching vk-bootstrap - done")
 
+message("-- Fetching imgui")
 FetchContent_Declare(
   imgui
-  GIT_REPOSITORY https://github.com/ocornut/imgui.git
+  GIT_REPOSITORY https://github.com/ocornut/imgui
   GIT_TAG 396b33d0d011290f11915b6a2a2bf7737fb42dd7)
+FetchContent_MakeAvailable(imgui)
+message("-- Fetching imgui - done")
 
+message("-- Fetching glm")
 FetchContent_Declare(
   glm
   GIT_REPOSITORY https://github.com/g-truc/glm
   GIT_TAG 1.0.2)
+FetchContent_MakeAvailable(glm)
+message("-- Fetching glm -done")
 
-FetchContent_MakeAvailable(spdlog vk-bootstrap imgui glm)
+message("-- Fetching VulkanMemoryAllocator")
+FetchContent_Declare(
+  VulkanMemoryAllocator
+  GIT_REPOSITORY
+    https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+  GIT_TAG v3.3.0)
+FetchContent_MakeAvailable(VulkanMemoryAllocator)
+message("-- Fetching VulkanMemoryAllocator - done")
 
 add_library(
   imgui STATIC
   ${imgui_SOURCE_DIR}/imgui.cpp ${imgui_SOURCE_DIR}/imgui_draw.cpp
-  ${imgui_SOURCE_DIR}/imgui_tables.cpp ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
+  ${imgui_SOURCE_DIR}/imgui_tables.cpp ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+  ${imgui_SOURCE_DIR}/imgui_demo.cpp)
 
 target_sources(
   ${PROJECT_NAME} PRIVATE ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
@@ -98,5 +121,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${imgui_SOURCE_DIR}
                                                    ${imgui_SOURCE_DIR}/backends)
 
 target_link_libraries(
-  ${PROJECT_NAME} PRIVATE imgui Vulkan::Vulkan SDL2::SDL2 spdlog::spdlog
-                          vk-bootstrap::vk-bootstrap glm::glm)
+  ${PROJECT_NAME}
+  PRIVATE imgui
+          Vulkan::Vulkan
+          SDL2::SDL2
+          spdlog::spdlog
+          vk-bootstrap::vk-bootstrap
+          glm::glm
+          VulkanMemoryAllocator)

@@ -1,8 +1,11 @@
 #pragma once
 
+#include <imgui.h>
+#include <functional>
 #include <vector>
 
 #include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 
 namespace lsv {
 constexpr unsigned int FRAMES_IN_FLIGHT = 2;
@@ -21,12 +24,21 @@ struct FrameData {
     VkFence commandsCompleteFence;
 };
 
+struct AllocatedImage {
+    VkImage image;
+    VkImageView imageView;
+    VmaAllocation allocation;
+    VkExtent3D imageExtent;
+    VkFormat imageFormat;
+    VkSampler sampler;
+};
+
 class Renderer {
 public:
     void init(RenderConfig config = {});
     void cleanup();
 
-    void draw();
+    void draw(ImDrawData *imGuiDrawData);
     void run();
 
 private:
@@ -40,12 +52,19 @@ private:
 
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
+    VmaAllocator allocator;
+
+    VkDescriptorPool imguiDescriptorPool;
 
     VkSurfaceKHR surface;
     VkPhysicalDevice physicalDevice;
     VkQueue graphicsQueue;
     uint32_t graphicsQueueFamily;
     VkDevice device;
+
+    VkFence immediateCmdFence;
+    VkCommandPool immediateCmdPool;
+    VkCommandBuffer immediateCmdBuffer;
 
     VkSwapchainKHR swapchain;
     VkExtent2D swapchainExtent;
@@ -63,6 +82,20 @@ private:
     VkPipelineLayout opaquePipelineLayout;
     VkPipeline opaquePipeline;
 
+    AllocatedImage mainDrawImage;
+    VkExtent2D mainDrawExtent;
+    AllocatedImage sceneDrawImage;
+    VkExtent2D sceneDrawExtent;
+    VkDescriptorSet sceneDrawSet;
+
+    void initImmediateCommands();
+    void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);
+
+    void initImgui();
+
+    void createDrawImages();
+    void destroyDrawImages();
+
     void createSwapchain(uint32_t width, uint32_t height);
     void rebuildSwapchain();
     void destroySwapchain();
@@ -75,6 +108,8 @@ private:
     void transitionImageLayout(VkCommandBuffer cmd, VkImage image,
                                VkImageLayout oldLayout,
                                VkImageLayout newLayout);
+    void blitImageToImage(VkCommandBuffer cmd, VkImage src, VkImage dst,
+                          VkExtent2D srcSize, VkExtent2D dstSize);
 
     std::vector<char> loadShader(const std::string &filePath);
     void buildPipelines();
