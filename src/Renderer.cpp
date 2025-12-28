@@ -1,3 +1,4 @@
+#include "imgui_internal.h"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -6,6 +7,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <vector>
+#include <chrono>
 
 #include <spdlog/spdlog.h>
 #include <SDL2/SDL.h>
@@ -227,13 +229,13 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
 
     VkViewport viewport{.x = 0,
                         .y = 0,
-                        .width = (float)mainDrawExtent.width,
-                        .height = (float)mainDrawExtent.height,
+                        .width = (float)sceneDrawExtent.width,
+                        .height = (float)sceneDrawExtent.height,
                         .minDepth = 0.0f,
                         .maxDepth = 1.0f};
     vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-    VkRect2D scissor{.extent = mainDrawExtent};
+    VkRect2D scissor{.extent = sceneDrawExtent};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     vkCmdDraw(cmd, 3, 1, 0, 0);
@@ -336,7 +338,14 @@ void Renderer::run() {
     SDL_Event e;
     bool shouldQuit = false;
 
+    auto lastTime = std::chrono::high_resolution_clock::now();
+
     while (!shouldQuit) {
+        auto now = std::chrono::high_resolution_clock::now();
+        double delta =
+            std::chrono::duration<double, std::milli>(now - lastTime).count();
+        lastTime = now;
+
         while (SDL_PollEvent(&e) != 0) {
             ImGui_ImplSDL2_ProcessEvent(&e);
             if (e.type == SDL_QUIT) {
@@ -351,18 +360,25 @@ void Renderer::run() {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
-        ImGui::DockSpaceOverViewport();
+
+        ImGuiID dockspaceID = ImGui::GetID("MainDockSpace");
+        ImGuiDockNodeFlags dockspaceFlags =
+            ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoWindowMenuButton;
+        ImGui::DockSpaceOverViewport(dockspaceID, nullptr, dockspaceFlags);
 
         ImGui::Begin("info");
-        ImGui::Text("frame number: %d", frameNumber);
+        ImGui::Text("cpu frame time: %2.0f ms (%4.0f fps)", delta,
+                    1000 / delta);
         ImGui::End();
 
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::Begin("viewport");
         ImVec2 size;
         size.x = sceneDrawExtent.width;
         size.y = sceneDrawExtent.height;
         ImGui::Image((ImTextureID)sceneDrawSet, size);
         ImGui::End();
+        ImGui::PopStyleVar();
 
         ImGui::Render();
         ImDrawData *drawData = ImGui::GetDrawData();
