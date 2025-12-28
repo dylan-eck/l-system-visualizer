@@ -165,9 +165,9 @@ void Renderer::cleanup() {
 void Renderer::draw(ImDrawData *imGuiDrawData) {
     FrameData &currentFrame = getCurrentFrame();
 
-    VK_CHECK(vkWaitForFences(device, 1, &currentFrame.commandsCompleteFence,
-                             true, 1000000000));
-    VK_CHECK(vkResetFences(device, 1, &currentFrame.commandsCompleteFence));
+    VK_CHECK(vkWaitForFences(device, 1, &currentFrame.renderFinishedFence, true,
+                             1000000000));
+    VK_CHECK(vkResetFences(device, 1, &currentFrame.renderFinishedFence));
 
     uint32_t swapchainImageIndex;
     VkResult acquireResult = vkAcquireNextImageKHR(
@@ -178,8 +178,6 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
         swapchainStale = true;
         return;
     }
-
-    VkClearColorValue clearColor{1.0f, 0.0f, 1.0f, 1.0f};
 
     VkImageSubresourceRange subResourceRange =
         createSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
@@ -194,20 +192,15 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
-    // ### render scene
     transitionImageLayout(cmd, sceneDrawImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_GENERAL);
-
-    vkCmdClearColorImage(cmd, sceneDrawImage.image, VK_IMAGE_LAYOUT_GENERAL,
-                         &clearColor, 1, &subResourceRange);
-
-    transitionImageLayout(cmd, sceneDrawImage.image, VK_IMAGE_LAYOUT_GENERAL,
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     VkRenderingAttachmentInfo sceneAttachmentInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
         .imageView = sceneDrawImage.imageView,
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .clearValue = {.color = {.float32 = {1.0f, 0.0f, 1.0f, 1.0f}}},
     };
 
     sceneDrawExtent = VkExtent2D{
@@ -246,21 +239,15 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    // ### render gui ###
     transitionImageLayout(cmd, mainDrawImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_GENERAL);
-
-    vkCmdClearColorImage(cmd, mainDrawImage.image, VK_IMAGE_LAYOUT_GENERAL,
-                         &clearColor, 1, &subResourceRange);
-
-    transitionImageLayout(cmd, mainDrawImage.image, VK_IMAGE_LAYOUT_GENERAL,
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     VkRenderingAttachmentInfo attachmentInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
         .imageView = mainDrawImage.imageView,
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    };
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .clearValue = {.color = {.float32 = {1.0f, 0.0f, 1.0f, 1.0f}}}};
 
     mainDrawExtent = VkExtent2D{
         .width = mainDrawImage.imageExtent.width,
@@ -314,7 +301,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
         .pSignalSemaphores = &renderFinishedSemaphores[swapchainImageIndex]};
 
     VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submitInfo,
-                           currentFrame.commandsCompleteFence));
+                           currentFrame.renderFinishedFence));
 
     VkPresentInfoKHR presentInfo{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -702,7 +689,7 @@ void Renderer::initFrameDatas() {
                                    &frames[i].imageAvailableSemaphore));
 
         VK_CHECK(vkCreateFence(device, &fenceInfo, nullptr,
-                               &frames[i].commandsCompleteFence));
+                               &frames[i].renderFinishedFence));
     }
 }
 
@@ -710,7 +697,7 @@ void Renderer::destroyFrameDatas() {
     for (const auto &frame : frames) {
         vkDestroyCommandPool(device, frame.commandPool, nullptr);
         vkDestroySemaphore(device, frame.imageAvailableSemaphore, nullptr);
-        vkDestroyFence(device, frame.commandsCompleteFence, nullptr);
+        vkDestroyFence(device, frame.renderFinishedFence, nullptr);
     }
 }
 

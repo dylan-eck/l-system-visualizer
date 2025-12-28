@@ -21,7 +21,7 @@ struct FrameData {
     VkCommandBuffer commandBuffer;
 
     VkSemaphore imageAvailableSemaphore;
-    VkFence commandsCompleteFence;
+    VkFence renderFinishedFence;
 };
 
 struct AllocatedImage {
