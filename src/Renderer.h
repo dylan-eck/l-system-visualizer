@@ -84,16 +84,14 @@ private:
 
     AllocatedImage mainDrawImage;
     VkExtent2D mainDrawExtent;
-    AllocatedImage sceneDrawImage;
-    VkExtent2D sceneDrawExtent;
-    VkDescriptorSet sceneDrawSet;
+    VkDescriptorSet imguiDescriptorSet;
 
     void initImmediateCommands();
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);
 
     void initImgui();
 
-    void createDrawImages();
+    void createDrawImage();
     void destroyDrawImages();
 
     void createSwapchain(uint32_t width, uint32_t height);

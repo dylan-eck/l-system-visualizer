@@ -40,10 +40,7 @@ void Renderer::init(RenderConfig config) {
     }
 
     windowExtent = VkExtent2D{.width = config.width, .height = config.height};
-    mainDrawExtent = windowExtent;
-    // TODO: auto set draw extent to a reasonable default based on window
-    // extend;
-    sceneDrawExtent = VkExtent2D{.width = 600, .height = 600};
+    mainDrawExtent = VkExtent2D{.width = 1920, .height = 1080};
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_WindowFlags windowFlags =
@@ -118,7 +115,7 @@ void Renderer::init(RenderConfig config) {
 
     initImmediateCommands();
 
-    createDrawImages();
+    createDrawImage();
 
     initFrameDatas();
 
@@ -192,25 +189,20 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
-    transitionImageLayout(cmd, sceneDrawImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
+    transitionImageLayout(cmd, mainDrawImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     VkRenderingAttachmentInfo sceneAttachmentInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = sceneDrawImage.imageView,
+        .imageView = mainDrawImage.imageView,
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .clearValue = {.color = {.float32 = {1.0f, 0.0f, 1.0f, 1.0f}}},
     };
 
-    sceneDrawExtent = VkExtent2D{
-        .width = sceneDrawImage.imageExtent.width,
-        .height = sceneDrawImage.imageExtent.height,
-    };
-
     VkRenderingInfo sceneRenderingInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea = VkRect2D{.extent = sceneDrawExtent},
+        .renderArea = VkRect2D{.extent = mainDrawExtent},
         .layerCount = 1,
         .colorAttachmentCount = 1,
         .pColorAttachments = &sceneAttachmentInfo,
@@ -222,41 +214,37 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
 
     VkViewport viewport{.x = 0,
                         .y = 0,
-                        .width = (float)sceneDrawExtent.width,
-                        .height = (float)sceneDrawExtent.height,
+                        .width = (float)mainDrawExtent.width,
+                        .height = (float)mainDrawExtent.height,
                         .minDepth = 0.0f,
                         .maxDepth = 1.0f};
     vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-    VkRect2D scissor{.extent = sceneDrawExtent};
+    VkRect2D scissor{.extent = mainDrawExtent};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     vkCmdDraw(cmd, 3, 1, 0, 0);
 
     vkCmdEndRendering(cmd);
 
-    transitionImageLayout(cmd, sceneDrawImage.image,
+    transitionImageLayout(cmd, mainDrawImage.image,
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    transitionImageLayout(cmd, mainDrawImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
+    transitionImageLayout(cmd, swapchainImages[swapchainImageIndex],
+                          VK_IMAGE_LAYOUT_UNDEFINED,
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     VkRenderingAttachmentInfo attachmentInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = mainDrawImage.imageView,
+        .imageView = swapchainImageViews[swapchainImageIndex],
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .clearValue = {.color = {.float32 = {1.0f, 0.0f, 1.0f, 1.0f}}}};
 
-    mainDrawExtent = VkExtent2D{
-        .width = mainDrawImage.imageExtent.width,
-        .height = mainDrawImage.imageExtent.height,
-    };
-
     VkRenderingInfo renderingInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea = VkRect2D{.extent = mainDrawExtent},
+        .renderArea = VkRect2D{.extent = swapchainExtent},
         .layerCount = 1,
         .colorAttachmentCount = 1,
         .pColorAttachments = &attachmentInfo,
@@ -268,21 +256,8 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
 
     vkCmdEndRendering(cmd);
 
-    // ### blit to swapchain and prepare for present ###
-    transitionImageLayout(cmd, mainDrawImage.image,
+    transitionImageLayout(cmd, swapchainImages[swapchainImageIndex],
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-    transitionImageLayout(cmd, swapchainImages[swapchainImageIndex],
-                          VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-    blitImageToImage(cmd, mainDrawImage.image,
-                     swapchainImages[swapchainImageIndex], mainDrawExtent,
-                     swapchainExtent);
-
-    transitionImageLayout(cmd, swapchainImages[swapchainImageIndex],
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                           VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VK_CHECK(vkEndCommandBuffer(cmd));
@@ -360,10 +335,17 @@ void Renderer::run() {
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::Begin("viewport");
-        ImVec2 size;
-        size.x = sceneDrawExtent.width;
-        size.y = sceneDrawExtent.height;
-        ImGui::Image((ImTextureID)sceneDrawSet, size);
+
+        // TODO: this sizing stuff doesn't work if viewport is larger than main
+        // draw image (aspect ratio mismatch will cause stretching issues)
+        ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+        mainDrawExtent.width = viewportSize.x;
+        mainDrawExtent.height = viewportSize.y;
+
+        ImGui::Image((ImTextureID)imguiDescriptorSet, viewportSize,
+                     ImVec2(0, 0),
+                     ImVec2(viewportSize.x / mainDrawImage.imageExtent.width,
+                            viewportSize.y / mainDrawImage.imageExtent.height));
         ImGui::End();
         ImGui::PopStyleVar();
 
@@ -451,7 +433,7 @@ void Renderer::initImgui() {
     VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr,
                                     &imguiDescriptorPool));
 
-    VkFormat format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    VkFormat format = VK_FORMAT_B8G8R8A8_UNORM;
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -482,19 +464,12 @@ void Renderer::initImgui() {
     ImGui_ImplVulkan_Init(&initInfo);
 }
 
-void Renderer::createDrawImages() {
+void Renderer::createDrawImage() {
 
     mainDrawImage.imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     mainDrawImage.imageExtent = VkExtent3D{
         .width = mainDrawExtent.width,
         .height = mainDrawExtent.height,
-        .depth = 1,
-    };
-
-    sceneDrawImage.imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-    sceneDrawImage.imageExtent = VkExtent3D{
-        .width = sceneDrawExtent.width,
-        .height = sceneDrawExtent.height,
         .depth = 1,
     };
 
@@ -507,9 +482,8 @@ void Renderer::createDrawImages() {
         .arrayLayers = 1,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                 VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
     };
 
     VmaAllocationCreateInfo allocInfo{
@@ -537,20 +511,6 @@ void Renderer::createDrawImages() {
     VK_CHECK(vkCreateImageView(device, &viewInfo, nullptr,
                                &mainDrawImage.imageView));
 
-    VkImageCreateInfo sceneImageInfo{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .imageType = VK_IMAGE_TYPE_2D,
-        .format = sceneDrawImage.imageFormat,
-        .extent = sceneDrawImage.imageExtent,
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-
-    };
-
     VkSamplerCreateInfo samplerInfo{
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         .magFilter = VK_FILTER_LINEAR,
@@ -567,34 +527,22 @@ void Renderer::createDrawImages() {
         .unnormalizedCoordinates = VK_FALSE,
     };
 
-    vmaCreateImage(allocator, &sceneImageInfo, &allocInfo,
-                   &sceneDrawImage.image, &sceneDrawImage.allocation, nullptr);
-
-    viewInfo.image = sceneDrawImage.image;
-    viewInfo.format = sceneDrawImage.imageFormat;
-
-    VK_CHECK(vkCreateImageView(device, &viewInfo, nullptr,
-                               &sceneDrawImage.imageView));
-
-    VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr,
-                             &sceneDrawImage.sampler));
+    VK_CHECK(
+        vkCreateSampler(device, &samplerInfo, nullptr, &mainDrawImage.sampler));
 
     immediateSubmit([&](VkCommandBuffer cmd) {
-        transitionImageLayout(cmd, sceneDrawImage.image,
+        transitionImageLayout(cmd, mainDrawImage.image,
                               VK_IMAGE_LAYOUT_UNDEFINED,
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     });
 
-    sceneDrawSet = ImGui_ImplVulkan_AddTexture(
-        sceneDrawImage.sampler, sceneDrawImage.imageView,
+    imguiDescriptorSet = ImGui_ImplVulkan_AddTexture(
+        mainDrawImage.sampler, mainDrawImage.imageView,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void Renderer::destroyDrawImages() {
-    vkDestroySampler(device, sceneDrawImage.sampler, nullptr);
-    vkDestroyImageView(device, sceneDrawImage.imageView, nullptr);
-    vmaDestroyImage(allocator, sceneDrawImage.image, sceneDrawImage.allocation);
-
+    vkDestroySampler(device, mainDrawImage.sampler, nullptr);
     vkDestroyImageView(device, mainDrawImage.imageView, nullptr);
     vmaDestroyImage(allocator, mainDrawImage.image, mainDrawImage.allocation);
 }
