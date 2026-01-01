@@ -1,37 +1,17 @@
 #pragma once
 
-#include <imgui.h>
 #include <functional>
+#include <span>
 #include <vector>
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
+#include <imgui.h>
+
+#include "RendererTypes.h"
 
 namespace lsv {
 constexpr unsigned int FRAMES_IN_FLIGHT = 2;
-
-struct RenderConfig {
-    uint32_t width = 1280;
-    uint32_t height = 720;
-    const char *applicationName = "";
-};
-
-struct FrameData {
-    VkCommandPool commandPool;
-    VkCommandBuffer commandBuffer;
-
-    VkSemaphore imageAvailableSemaphore;
-    VkFence renderFinishedFence;
-};
-
-struct AllocatedImage {
-    VkImage image;
-    VkImageView imageView;
-    VmaAllocation allocation;
-    VkExtent3D imageExtent;
-    VkFormat imageFormat;
-    VkSampler sampler;
-};
 
 class Renderer {
 public:
@@ -79,8 +59,10 @@ private:
         return frames[frameNumber % FRAMES_IN_FLIGHT];
     };
 
-    VkPipelineLayout opaquePipelineLayout;
-    VkPipeline opaquePipeline;
+    VkPipelineLayout meshPipelineLayout;
+    VkPipeline meshPipeline;
+
+    GPUMesh rectangle;
 
     AllocatedImage mainDrawImage;
     VkExtent2D mainDrawExtent;
@@ -92,7 +74,7 @@ private:
     void initImgui();
 
     void createDrawImage();
-    void destroyDrawImages();
+    void destroyDrawImage();
 
     void createSwapchain(uint32_t width, uint32_t height);
     void rebuildSwapchain();
@@ -111,5 +93,12 @@ private:
 
     std::vector<char> loadShader(const std::string &filePath);
     void buildPipelines();
+    void destroyPipelines();
+
+    AllocatedBuffer createBuffer(size_t size, VkBufferUsageFlags usageFlags,
+                                 VmaMemoryUsage memoryUsage);
+    void destroyBuffer(AllocatedBuffer buffer);
+
+    GPUMesh uploadMesh(std::span<Vertex> vertices, std::span<uint32_t> indices);
 };
 } // namespace lsv
