@@ -230,12 +230,15 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
     transitionImageLayout(cmd, mainDrawImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
+    VkClearValue clearValue;
+    std::copy(clearColor.begin(), clearColor.end(), clearValue.color.float32);
+
     VkRenderingAttachmentInfo sceneAttachmentInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
         .imageView = mainDrawImage.imageView,
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .clearValue = {.color = {.float32 = {1.0f, 0.0f, 1.0f, 1.0f}}},
+        .clearValue = clearValue,
     };
 
     VkRenderingInfo sceneRenderingInfo{
@@ -300,7 +303,8 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
         .imageView = swapchainImageViews[swapchainImageIndex],
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .clearValue = {.color = {.float32 = {1.0f, 0.0f, 1.0f, 1.0f}}}};
+        .clearValue = clearValue,
+    };
 
     VkRenderingInfo renderingInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
@@ -391,6 +395,7 @@ void Renderer::run() {
         ImGui::Begin("info");
         ImGui::Text("cpu frame time: %2.0f ms (%4.0f fps)", delta,
                     1000 / delta);
+        ImGui::ColorPicker4("clear color", clearColor.data());
         ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));

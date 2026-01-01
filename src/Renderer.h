@@ -59,6 +59,8 @@ private:
         return frames[frameNumber % FRAMES_IN_FLIGHT];
     };
 
+    std::array<float, 4> clearColor{1.0f, 0.0f, 1.0f, 1.0f};
+
     VkPipelineLayout meshPipelineLayout;
     VkPipeline meshPipeline;
 
