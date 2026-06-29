@@ -89,8 +89,8 @@ void Renderer::init(RenderConfig config) {
 
     VkPhysicalDeviceVulkan13Features features13{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-        .dynamicRendering = VK_TRUE,
         .synchronization2 = VK_TRUE,
+        .dynamicRendering = VK_TRUE,
     };
 
     vkb::PhysicalDeviceSelector deviceSelector{vkbInst};
