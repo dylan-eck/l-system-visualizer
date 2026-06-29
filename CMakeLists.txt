@@ -24,7 +24,8 @@ find_package(Vulkan REQUIRED)
 find_program(SLANGC_EXECUTABLE slangc HINTS $ENV{VULKAN_SDK}/bin REQUIRED)
 message("-- Found slangc: " ${SLANGC_EXECUTABLE})
 
-set(SHADERS_DIR ${CMAKE_SOURCE_DIR}/shaders)
+set(SHADER_OUTPUT_DIR "${CMAKE_BINARY_DIR}/shaders")
+file(MAKE_DIRECTORY "${SHADER_OUTPUT_DIR}")
 set(ENTRY_POINTS -entry vertMain -entry fragMain)
 set(SPIRV_SHADERS)
 
