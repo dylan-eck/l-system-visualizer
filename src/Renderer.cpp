@@ -304,7 +304,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
         .vertexBuffer = rectangle.vertexBufferAddress,
     };
 
-    vkCmdPushConstants(cmd, meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+    vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                        sizeof(GPUDrawPushConstants), &pushConstants);
 
     vkCmdBindIndexBuffer(cmd, rectangle.indices.buffer, 0,
@@ -315,7 +315,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
 
     pushConstants.vertexBuffer = line.vertexBufferAddress,
 
-    vkCmdPushConstants(cmd, meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+    vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                        sizeof(GPUDrawPushConstants), &pushConstants);
 
     vkCmdBindIndexBuffer(cmd, line.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -846,17 +846,17 @@ std::vector<char> Renderer::loadShader(const std::string &filePath) {
 }
 
 void Renderer::buildPipelines() {
-    std::vector<char> meshShader = loadShader("./build/shaders/mesh.spv");
+    std::vector<char> shader = loadShader("./build/shaders/mesh.spv");
 
-    VkShaderModuleCreateInfo meshModuleInfo{
+    VkShaderModuleCreateInfo shaderModuleInfo{
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = meshShader.size() * sizeof(char),
-        .pCode = reinterpret_cast<const uint32_t *>(meshShader.data()),
+        .codeSize = shader.size() * sizeof(char),
+        .pCode = reinterpret_cast<const uint32_t *>(shader.data()),
     };
 
-    VkShaderModule meshModule;
-    VK_CHECK(
-        vkCreateShaderModule(device, &meshModuleInfo, nullptr, &meshModule));
+    VkShaderModule shaderModule;
+    VK_CHECK(vkCreateShaderModule(device, &shaderModuleInfo, nullptr,
+                                  &shaderModule));
 
     VkPushConstantRange pushConstantRange{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
@@ -864,19 +864,19 @@ void Renderer::buildPipelines() {
         .size = sizeof(GPUDrawPushConstants),
     };
 
-    VkPipelineLayoutCreateInfo meshLayoutInfo{
+    VkPipelineLayoutCreateInfo layoutInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &pushConstantRange,
     };
 
-    VK_CHECK(vkCreatePipelineLayout(device, &meshLayoutInfo, nullptr,
-                                    &meshPipelineLayout));
+    VK_CHECK(
+        vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout));
 
-    auto linePipelineBuilder =
+    auto pipelineBuilder =
         PipelineBuilder()
-            .setLayout(meshPipelineLayout)
-            .setShaders(meshModule, meshModule)
+            .setLayout(pipelineLayout)
+            .setShaders(shaderModule, shaderModule)
             .setInputTopology(VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
             .setPolygonMode(VK_POLYGON_MODE_FILL)
             .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
@@ -886,37 +886,26 @@ void Renderer::buildPipelines() {
             .setColorAttachmentFormat(mainDrawImage.imageFormat)
             .setDepthFormat(VK_FORMAT_UNDEFINED);
 
-    auto meshPipelineBuilder =
-        PipelineBuilder()
-            .setLayout(meshPipelineLayout)
-            .setShaders(meshModule, meshModule)
-            .setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-            .setPolygonMode(VK_POLYGON_MODE_FILL)
-            .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
-            .setMultisampleDisabled()
-            .setBlendingDisabled()
-            .setDepthTestDisabled()
-            .setColorAttachmentFormat(mainDrawImage.imageFormat)
-            .setDepthFormat(VK_FORMAT_UNDEFINED);
-
-    linePipeline = linePipelineBuilder.build(device);
+    linePipeline = pipelineBuilder.build(device);
 
     if (linePipeline == VK_NULL_HANDLE) {
         throw std::runtime_error("failed to build line pipeline");
     }
 
-    meshPipeline = meshPipelineBuilder.build(device);
+    pipelineBuilder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
+    meshPipeline = pipelineBuilder.build(device);
 
     if (meshPipeline == VK_NULL_HANDLE) {
         throw std::runtime_error("failed to build mesh pipeline");
     }
 
-    vkDestroyShaderModule(device, meshModule, nullptr);
+    vkDestroyShaderModule(device, shaderModule, nullptr);
 }
 
 void Renderer::destroyPipelines() {
     vkDestroyPipeline(device, meshPipeline, nullptr);
-    vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 }
 
 AllocatedBuffer Renderer::createBuffer(size_t size, VkBufferUsageFlags usage,

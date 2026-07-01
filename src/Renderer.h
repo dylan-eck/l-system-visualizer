@@ -61,7 +61,7 @@ private:
 
     std::array<float, 4> clearColor{0.0f, 0.0f, 0.0f, 1.0f};
 
-    VkPipelineLayout meshPipelineLayout;
+    VkPipelineLayout pipelineLayout;
     VkPipeline linePipeline;
     VkPipeline meshPipeline;
 
