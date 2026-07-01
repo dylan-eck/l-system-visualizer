@@ -133,6 +133,32 @@ void Renderer::init(RenderConfig config) {
 
     buildPipelines();
 
+    // lines for x, y and z axes
+    std::array<Vertex, 6> lineVerts;
+    lineVerts[0].position = {0, 0, 0};
+    lineVerts[1].position = {0, 0, 0};
+    lineVerts[2].position = {0, 0, 0};
+    lineVerts[3].position = {1, 0, 0};
+    lineVerts[4].position = {0, 1, 0};
+    lineVerts[5].position = {0, 0, 1};
+
+    lineVerts[0].color = {1, 0, 0, 1};
+    lineVerts[1].color = {0, 1, 0, 1};
+    lineVerts[2].color = {0, 0, 1, 1};
+    lineVerts[3].color = {1, 0, 0, 1};
+    lineVerts[4].color = {0, 1, 0, 1};
+    lineVerts[5].color = {0, 0, 1, 1};
+
+    std::array<uint32_t, 6> lineIdxs;
+    lineIdxs[0] = 0;
+    lineIdxs[1] = 3;
+    lineIdxs[2] = 1;
+    lineIdxs[3] = 4;
+    lineIdxs[4] = 2;
+    lineIdxs[5] = 5;
+
+    line = uploadMesh(lineVerts, lineIdxs);
+
     std::array<Vertex, 4> rectVertices;
 
     rectVertices[0].position = {0.5, -0.5, 0};
@@ -251,8 +277,6 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
 
     vkCmdBeginRendering(cmd, &sceneRenderingInfo);
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
-
     VkViewport viewport{.x = 0,
                         .y = 0,
                         .width = (float)mainDrawExtent.width,
@@ -286,6 +310,17 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
     vkCmdBindIndexBuffer(cmd, rectangle.indices.buffer, 0,
                          VK_INDEX_TYPE_UINT32);
 
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
+    vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+
+    pushConstants.vertexBuffer = line.vertexBufferAddress,
+
+    vkCmdPushConstants(cmd, meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                       sizeof(GPUDrawPushConstants), &pushConstants);
+
+    vkCmdBindIndexBuffer(cmd, line.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, linePipeline);
     vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 
     vkCmdEndRendering(cmd);
@@ -838,6 +873,19 @@ void Renderer::buildPipelines() {
     VK_CHECK(vkCreatePipelineLayout(device, &meshLayoutInfo, nullptr,
                                     &meshPipelineLayout));
 
+    auto linePipelineBuilder =
+        PipelineBuilder()
+            .setLayout(meshPipelineLayout)
+            .setShaders(meshModule, meshModule)
+            .setInputTopology(VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
+            .setPolygonMode(VK_POLYGON_MODE_FILL)
+            .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
+            .setMultisampleDisabled()
+            .setBlendingDisabled()
+            .setDepthTestDisabled()
+            .setColorAttachmentFormat(mainDrawImage.imageFormat)
+            .setDepthFormat(VK_FORMAT_UNDEFINED);
+
     auto meshPipelineBuilder =
         PipelineBuilder()
             .setLayout(meshPipelineLayout)
@@ -850,6 +898,12 @@ void Renderer::buildPipelines() {
             .setDepthTestDisabled()
             .setColorAttachmentFormat(mainDrawImage.imageFormat)
             .setDepthFormat(VK_FORMAT_UNDEFINED);
+
+    linePipeline = linePipelineBuilder.build(device);
+
+    if (linePipeline == VK_NULL_HANDLE) {
+        throw std::runtime_error("failed to build line pipeline");
+    }
 
     meshPipeline = meshPipelineBuilder.build(device);
 

@@ -59,12 +59,14 @@ private:
         return frames[frameNumber % FRAMES_IN_FLIGHT];
     };
 
-    std::array<float, 4> clearColor{1.0f, 0.0f, 1.0f, 1.0f};
+    std::array<float, 4> clearColor{0.0f, 0.0f, 0.0f, 1.0f};
 
     VkPipelineLayout meshPipelineLayout;
+    VkPipeline linePipeline;
     VkPipeline meshPipeline;
 
     GPUMesh rectangle;
+    GPUMesh line;
 
     AllocatedImage mainDrawImage;
     VkExtent2D mainDrawExtent;
