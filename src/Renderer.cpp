@@ -146,7 +146,7 @@ void Renderer::init(RenderConfig config) {
 
     std::string result = axiom;
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
         std::string next = "";
 
         for (const auto &c : result) {
@@ -172,6 +172,18 @@ void Renderer::init(RenderConfig config) {
         glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
         lineVerts.push_back(
             Vertex{.position = currPosition, .color = {1, 1, 1, 1}});
+    }
+
+    glm::vec3 avgPos{0};
+    for (const auto &v : lineVerts) {
+        avgPos += v.position;
+    }
+    avgPos /= lineVerts.size();
+
+    std::cout << "avg pos: " << vec3ToString(avgPos);
+
+    for (auto &v : lineVerts) {
+        v.position -= avgPos;
     }
 
     lineIdxs.resize(2 * lineVerts.size() - 2);
@@ -243,6 +255,7 @@ void Renderer::cleanup() {
     destroyBuffer(rectangle.vertices);
 
     destroyPipelines();
+    destroyMesh(line);
 
     destroyFrameDatas();
 
@@ -342,7 +355,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
                                  glm::vec3(0.0f, -1.0f, 0.0f));
 
     glm::mat4 model =
-        glm::rotate(glm::mat4(1.0f), static_cast<float>(0 * frameNumber),
+        glm::rotate(glm::mat4(1.0f), static_cast<float>(0.01 * frameNumber),
                     glm::vec3(0.0f, 1.0f, 0.0f));
 
     GPUDrawPushConstants pushConstants{
@@ -950,8 +963,7 @@ void Renderer::buildPipelines() {
 }
 
 void Renderer::destroyPipelines() {
-    vkDestroyPipeline(device, meshPipeline, nullptr);
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyPipeline(device, linePipeline, nullptr);
 }
 
 AllocatedBuffer Renderer::createBuffer(size_t size, VkBufferUsageFlags usage,
@@ -1036,6 +1048,12 @@ GPUMesh Renderer::uploadMesh(std::span<Vertex> vertices,
     destroyBuffer(staging);
 
     return mesh;
+}
+
+void Renderer::destroyMesh(GPUMesh mesh) {
+    destroyBuffer(mesh.vertices);
+    destroyBuffer(mesh.indices);
+    mesh.vertexBufferAddress = 0;
 }
 
 void Renderer::printMat4(glm::mat4 m) {

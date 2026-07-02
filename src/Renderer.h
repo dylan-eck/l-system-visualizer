@@ -107,6 +107,7 @@ private:
     void destroyBuffer(AllocatedBuffer buffer);
 
     GPUMesh uploadMesh(std::span<Vertex> vertices, std::span<uint32_t> indices);
+    void destroyMesh(GPUMesh mesh);
 
     void printMat4(glm::mat4 m);
     std::string vec3ToString(glm::vec3 v);
