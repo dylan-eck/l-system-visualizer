@@ -12,7 +12,6 @@ int main() {
 #ifndef NDEBUG
     spdlog::set_level(spdlog::level::debug);
 #endif
-
     auto renderer = lsv::Renderer();
     lsv::RenderConfig config{.applicationName = "L System Visualizer"};
 

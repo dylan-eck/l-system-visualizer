@@ -27,6 +27,10 @@
 #include "Renderer.h"
 #include "PipelineBuilder.h"
 
+#include <map>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
+
 #define VK_CHECK(x)                                                            \
     do {                                                                       \
         VkResult err = x;                                                      \
@@ -132,6 +136,57 @@ void Renderer::init(RenderConfig config) {
     initFrameDatas();
 
     buildPipelines();
+
+    // ### L-SYS STUFF
+    std::vector<std::string> variables{"F"};
+    std::vector<std::string> constants{"+", "-"};
+    std::map<std::string, std::string> productions{
+        {"F", "F+F-F-F+F"}, {"+", "+"}, {"-", "-"}};
+    std::string axiom = "F";
+
+    std::string result = axiom;
+
+    for (int i = 0; i < 1; i++) {
+        std::string next = "";
+
+        for (const auto &c : result) {
+            std::string s{c};
+            next.append(productions[s]);
+        }
+        result = next;
+        std::cout << result << std::endl;
+    }
+
+    std::map<char, glm::mat4> transforms{
+        {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0, 0.1, 0))},
+        {'+',
+         glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0, 0, 1))},
+        {'-', glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f),
+                          glm::vec3(0, 0, 1))},
+    };
+
+    for (const auto &[key, val] : transforms) {
+        std::cout << key << ":" << std::endl;
+        printMat4(val);
+        std::cout << std::endl;
+    }
+
+    glm::vec3 currPoint = glm::vec3(0);
+    std::vector<glm::vec3> points{currPoint};
+
+    for (const auto &c : result) {
+        currPoint = transforms[c] * glm::vec4(currPoint, 1);
+        points.push_back(currPoint);
+    }
+
+    for (int i = 0; i < points.size(); i++) {
+        std::cout << i << ": " << vec3ToString(points[i]) << std::endl;
+    }
+
+    std::vector<uint32_t> indices(2 * points.size() - 2);
+    for (int i = 0; i < (2 * points.size() - 2); i++) {
+        indices[i] = (i + 1) / 2;
+    }
 
     // lines for x, y and z axes
     std::array<Vertex, 6> lineVerts;
@@ -304,14 +359,14 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
         .vertexBuffer = rectangle.vertexBufferAddress,
     };
 
-    vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
-                       sizeof(GPUDrawPushConstants), &pushConstants);
+    // vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+    //                    sizeof(GPUDrawPushConstants), &pushConstants);
 
-    vkCmdBindIndexBuffer(cmd, rectangle.indices.buffer, 0,
-                         VK_INDEX_TYPE_UINT32);
+    // vkCmdBindIndexBuffer(cmd, rectangle.indices.buffer, 0,
+    //                      VK_INDEX_TYPE_UINT32);
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
-    vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+    // vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
+    // vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 
     pushConstants.vertexBuffer = line.vertexBufferAddress,
 
@@ -990,5 +1045,16 @@ GPUMesh Renderer::uploadMesh(std::span<Vertex> vertices,
     destroyBuffer(staging);
 
     return mesh;
+}
+
+void Renderer::printMat4(glm::mat4 m) {
+    printf("% .2f % .2f % .2f % .2f\n", m[0][0], m[1][0], m[2][0], m[3][0]);
+    printf("% .2f % .2f % .2f % .2f\n", m[0][1], m[1][1], m[2][1], m[3][1]);
+    printf("% .2f % .2f % .2f % .2f\n", m[0][2], m[1][2], m[2][2], m[3][2]);
+    printf("% .2f % .2f % .2f % .2f\n", m[0][3], m[1][3], m[2][3], m[3][3]);
+}
+
+std::string Renderer::vec3ToString(glm::vec3 v) {
+    return fmt::format("{: .2f} {: .2f} {: .2f}", v[0], v[1], v[2]);
 }
 } // namespace lsv
