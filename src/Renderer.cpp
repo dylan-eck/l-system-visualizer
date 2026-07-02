@@ -146,7 +146,7 @@ void Renderer::init(RenderConfig config) {
 
     std::string result = axiom;
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 2; i++) {
         std::string next = "";
 
         for (const auto &c : result) {
@@ -172,71 +172,77 @@ void Renderer::init(RenderConfig config) {
     }
 
     glm::vec3 currPoint = glm::vec3(0);
-    std::vector<glm::vec3> points{currPoint};
+    lineVerts.push_back(Vertex{.position = currPoint, .color = {1, 1, 1, 1}});
 
     for (const auto &c : result) {
         currPoint = transforms[c] * glm::vec4(currPoint, 1);
-        points.push_back(currPoint);
+        lineVerts.push_back(
+            Vertex{.position = currPoint, .color = {1, 1, 1, 1}});
     }
 
-    for (int i = 0; i < points.size(); i++) {
-        std::cout << i << ": " << vec3ToString(points[i]) << std::endl;
+    for (int i = 0; i < lineVerts.size(); i++) {
+        std::cout << i << ": " << vec3ToString(lineVerts[i].position)
+                  << std::endl;
     }
 
-    std::vector<uint32_t> indices(2 * points.size() - 2);
-    for (int i = 0; i < (2 * points.size() - 2); i++) {
-        indices[i] = (i + 1) / 2;
+    std::cout << std::endl;
+    lineIdxs.resize(2 * lineVerts.size() - 2);
+    for (int i = 0; i < (2 * lineVerts.size() - 2); i++) {
+        lineIdxs[i] = (i + 1) / 2;
+        std::cout << lineIdxs[i] << std::endl;
     }
 
-    // lines for x, y and z axes
-    std::array<Vertex, 6> lineVerts;
-    lineVerts[0].position = {0, 0, 0};
-    lineVerts[1].position = {0, 0, 0};
-    lineVerts[2].position = {0, 0, 0};
-    lineVerts[3].position = {1, 0, 0};
-    lineVerts[4].position = {0, 1, 0};
-    lineVerts[5].position = {0, 0, 1};
+    std::cout << "index count: " << lineIdxs.size() << std::endl;
 
-    lineVerts[0].color = {1, 0, 0, 1};
-    lineVerts[1].color = {0, 1, 0, 1};
-    lineVerts[2].color = {0, 0, 1, 1};
-    lineVerts[3].color = {1, 0, 0, 1};
-    lineVerts[4].color = {0, 1, 0, 1};
-    lineVerts[5].color = {0, 0, 1, 1};
+    // // lines for x, y and z axes
+    // std::array<Vertex, 6> lineVerts;
+    // lineVerts[0].position = {0, 0, 0};
+    // lineVerts[1].position = {0, 0, 0};
+    // lineVerts[2].position = {0, 0, 0};
+    // lineVerts[3].position = {1, 0, 0};
+    // lineVerts[4].position = {0, 1, 0};
+    // lineVerts[5].position = {0, 0, 1};
 
-    std::array<uint32_t, 6> lineIdxs;
-    lineIdxs[0] = 0;
-    lineIdxs[1] = 3;
-    lineIdxs[2] = 1;
-    lineIdxs[3] = 4;
-    lineIdxs[4] = 2;
-    lineIdxs[5] = 5;
+    // lineVerts[0].color = {1, 0, 0, 1};
+    // lineVerts[1].color = {0, 1, 0, 1};
+    // lineVerts[2].color = {0, 0, 1, 1};
+    // lineVerts[3].color = {1, 0, 0, 1};
+    // lineVerts[4].color = {0, 1, 0, 1};
+    // lineVerts[5].color = {0, 0, 1, 1};
+
+    // std::array<uint32_t, 6> lineIdxs;
+    // lineIdxs[0] = 0;
+    // lineIdxs[1] = 3;
+    // lineIdxs[2] = 1;
+    // lineIdxs[3] = 4;
+    // lineIdxs[4] = 2;
+    // lineIdxs[5] = 5;
 
     line = uploadMesh(lineVerts, lineIdxs);
 
-    std::array<Vertex, 4> rectVertices;
+    // std::array<Vertex, 4> rectVertices;
 
-    rectVertices[0].position = {0.5, -0.5, 0};
-    rectVertices[1].position = {0.5, 0.5, 0};
-    rectVertices[2].position = {-0.5, -0.5, 0};
-    rectVertices[3].position = {-0.5, 0.5, 0};
+    // rectVertices[0].position = {0.5, -0.5, 0};
+    // rectVertices[1].position = {0.5, 0.5, 0};
+    // rectVertices[2].position = {-0.5, -0.5, 0};
+    // rectVertices[3].position = {-0.5, 0.5, 0};
 
-    rectVertices[0].color = {0, 0, 0, 1};
-    rectVertices[1].color = {0.5, 0.5, 0.5, 1};
-    rectVertices[2].color = {1, 0, 0, 1};
-    rectVertices[3].color = {0, 1, 0, 1};
+    // rectVertices[0].color = {0, 0, 0, 1};
+    // rectVertices[1].color = {0.5, 0.5, 0.5, 1};
+    // rectVertices[2].color = {1, 0, 0, 1};
+    // rectVertices[3].color = {0, 1, 0, 1};
 
-    std::array<uint32_t, 6> rectIndices;
+    // std::array<uint32_t, 6> rectIndices;
 
-    rectIndices[0] = 0;
-    rectIndices[1] = 1;
-    rectIndices[2] = 2;
+    // rectIndices[0] = 0;
+    // rectIndices[1] = 1;
+    // rectIndices[2] = 2;
 
-    rectIndices[3] = 2;
-    rectIndices[4] = 1;
-    rectIndices[5] = 3;
+    // rectIndices[3] = 2;
+    // rectIndices[4] = 1;
+    // rectIndices[5] = 3;
 
-    rectangle = uploadMesh(rectVertices, rectIndices);
+    // rectangle = uploadMesh(rectVertices, rectIndices);
 
     isInitialized = true;
 }
@@ -376,7 +382,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
     vkCmdBindIndexBuffer(cmd, line.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, linePipeline);
-    vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, lineIdxs.size(), 1, 0, 0, 0);
 
     vkCmdEndRendering(cmd);
 
