@@ -146,7 +146,7 @@ void Renderer::init(RenderConfig config) {
 
     std::string result = axiom;
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 10; i++) {
         std::string next = "";
 
         for (const auto &c : result) {
@@ -154,45 +154,30 @@ void Renderer::init(RenderConfig config) {
             next.append(productions[s]);
         }
         result = next;
-        std::cout << result << std::endl;
     }
 
     std::map<char, glm::mat4> transforms{
-        {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0, 0.1, 0))},
+        {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
         {'+',
          glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0, 0, 1))},
         {'-', glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f),
                           glm::vec3(0, 0, 1))},
     };
 
-    for (const auto &[key, val] : transforms) {
-        std::cout << key << ":" << std::endl;
-        printMat4(val);
-        std::cout << std::endl;
-    }
-
-    glm::vec3 currPoint = glm::vec3(0);
-    lineVerts.push_back(Vertex{.position = currPoint, .color = {1, 1, 1, 1}});
+    glm::mat4 currTransform = glm::mat4(1.0f);
+    lineVerts.push_back(Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}});
 
     for (const auto &c : result) {
-        currPoint = transforms[c] * glm::vec4(currPoint, 1);
+        currTransform *= transforms[c];
+        glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
         lineVerts.push_back(
-            Vertex{.position = currPoint, .color = {1, 1, 1, 1}});
+            Vertex{.position = currPosition, .color = {1, 1, 1, 1}});
     }
 
-    for (int i = 0; i < lineVerts.size(); i++) {
-        std::cout << i << ": " << vec3ToString(lineVerts[i].position)
-                  << std::endl;
-    }
-
-    std::cout << std::endl;
     lineIdxs.resize(2 * lineVerts.size() - 2);
     for (int i = 0; i < (2 * lineVerts.size() - 2); i++) {
         lineIdxs[i] = (i + 1) / 2;
-        std::cout << lineIdxs[i] << std::endl;
     }
-
-    std::cout << "index count: " << lineIdxs.size() << std::endl;
 
     // // lines for x, y and z axes
     // std::array<Vertex, 6> lineVerts;
@@ -357,7 +342,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
                                  glm::vec3(0.0f, -1.0f, 0.0f));
 
     glm::mat4 model =
-        glm::rotate(glm::mat4(1.0f), static_cast<float>(0.01 * frameNumber),
+        glm::rotate(glm::mat4(1.0f), static_cast<float>(0 * frameNumber),
                     glm::vec3(0.0f, 1.0f, 0.0f));
 
     GPUDrawPushConstants pushConstants{
