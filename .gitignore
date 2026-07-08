@@ -1,4 +1,6 @@
 build*
+!build.sh
+compile_commands.json
 .vscode
 .cache
 _deps

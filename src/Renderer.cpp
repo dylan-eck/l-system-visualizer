@@ -957,16 +957,17 @@ void Renderer::buildPipelines() {
 
     pipelineBuilder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
-    meshPipeline = pipelineBuilder.build(device);
+    // meshPipeline = pipelineBuilder.build(device);
 
-    if (meshPipeline == VK_NULL_HANDLE) {
-        throw std::runtime_error("failed to build mesh pipeline");
-    }
+    // if (meshPipeline == VK_NULL_HANDLE) {
+    //     throw std::runtime_error("failed to build mesh pipeline");
+    // }
 
     vkDestroyShaderModule(device, shaderModule, nullptr);
 }
 
 void Renderer::destroyPipelines() {
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyPipeline(device, linePipeline, nullptr);
 }
 
