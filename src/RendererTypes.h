@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -9,6 +11,7 @@ struct RenderConfig {
     uint32_t width = 1280;
     uint32_t height = 720;
     const char *applicationName = "";
+    std::string executablePath = "";
 };
 
 struct FrameData {

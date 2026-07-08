@@ -3,6 +3,7 @@
 #include <functional>
 #include <span>
 #include <vector>
+#include <string>
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -23,6 +24,7 @@ public:
 
 private:
     const char *applicationName;
+    std::string executablePath;
     VkExtent2D windowExtent;
     int frameNumber{0};
     bool isInitialized{false};
@@ -74,6 +76,8 @@ private:
     AllocatedImage mainDrawImage;
     VkExtent2D mainDrawExtent;
     VkDescriptorSet imguiDescriptorSet;
+
+    float tmpAngle = 60.0f;
 
     void initImmediateCommands();
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);

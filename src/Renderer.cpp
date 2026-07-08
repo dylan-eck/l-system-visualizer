@@ -46,13 +46,16 @@ void Renderer::init(RenderConfig config) {
         return;
     }
 
+    applicationName = config.applicationName;
+    executablePath = config.executablePath;
+
     windowExtent = VkExtent2D{.width = config.width, .height = config.height};
     mainDrawExtent = VkExtent2D{.width = 1920, .height = 1080};
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_WindowFlags windowFlags =
         (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
-    window = SDL_CreateWindow(config.applicationName, SDL_WINDOWPOS_UNDEFINED,
+    window = SDL_CreateWindow(applicationName, SDL_WINDOWPOS_UNDEFINED,
                               SDL_WINDOWPOS_UNDEFINED, windowExtent.width,
                               windowExtent.height, windowFlags);
     if (!window) {
@@ -66,7 +69,7 @@ void Renderer::init(RenderConfig config) {
 #endif
 
     vkb::InstanceBuilder instanceBuilder;
-    vkb::Instance vkbInst = instanceBuilder.set_app_name(config.applicationName)
+    vkb::Instance vkbInst = instanceBuilder.set_app_name(applicationName)
                                 .request_validation_layers(useValidationLayers)
                                 .use_default_debug_messenger()
                                 .require_api_version(1, 3, 0)
@@ -141,7 +144,7 @@ void Renderer::init(RenderConfig config) {
     std::vector<std::string> variables{"F"};
     std::vector<std::string> constants{"+", "-"};
     std::map<std::string, std::string> productions{
-        {"F", "F+F-F-F+F"}, {"+", "+"}, {"-", "-"}};
+        {"F", "F+F--F+F"}, {"+", "+"}, {"-", "-"}};
     std::string axiom = "F";
 
     std::string result = axiom;
@@ -159,8 +162,8 @@ void Renderer::init(RenderConfig config) {
     std::map<char, glm::mat4> transforms{
         {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
         {'+',
-         glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0, 0, 1))},
-        {'-', glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f),
+         glm::rotate(glm::mat4(1.0f), glm::radians(80.0f), glm::vec3(0, 0, 1))},
+        {'-', glm::rotate(glm::mat4(1.0f), glm::radians(-80.0f),
                           glm::vec3(0, 0, 1))},
     };
 
@@ -179,8 +182,6 @@ void Renderer::init(RenderConfig config) {
         avgPos += v.position;
     }
     avgPos /= lineVerts.size();
-
-    std::cout << "avg pos: " << vec3ToString(avgPos);
 
     for (auto &v : lineVerts) {
         v.position -= avgPos;
@@ -481,6 +482,8 @@ void Renderer::run() {
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
+        // ImGui::ShowDemoWindow();
+
         ImGuiID dockspaceID = ImGui::GetID("MainDockSpace");
         ImGuiDockNodeFlags dockspaceFlags =
             ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoWindowMenuButton;
@@ -490,6 +493,7 @@ void Renderer::run() {
         ImGui::Text("cpu frame time: %2.0f ms (%4.0f fps)", delta,
                     1000 / delta);
         ImGui::ColorPicker4("clear color", clearColor.data());
+        ImGui::DragFloat("angle", &tmpAngle);
         ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -905,7 +909,7 @@ std::vector<char> Renderer::loadShader(const std::string &filePath) {
 }
 
 void Renderer::buildPipelines() {
-    std::vector<char> shader = loadShader("./build/shaders/mesh.spv");
+    std::vector<char> shader = loadShader(executablePath + "/shaders/mesh.spv");
 
     VkShaderModuleCreateInfo shaderModuleInfo{
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,

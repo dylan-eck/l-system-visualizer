@@ -49,6 +49,12 @@ endforeach()
 add_custom_target(shaders ALL DEPENDS ${SPIRV_SHADERS})
 add_dependencies(${PROJECT_NAME} shaders)
 
+add_custom_command(
+  TARGET ${PROJECT_NAME}
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_SOURCE_DIR}/imgui.ini
+          ${CMAKE_BINARY_DIR}/imgui.ini)
+
 include(FetchContent)
 
 message("-- Fetching spdlog")
