@@ -358,6 +358,17 @@ void Renderer::run() {
             std::chrono::duration<double, std::milli>(now - lastTime).count();
         lastTime = now;
 
+        frameTimes.push_back(delta);
+        while (frameTimes.size() > frameTimeWindow) {
+            frameTimes.pop_front();
+        }
+
+        double avgFrameTime = 0;
+        for (const auto &time : frameTimes) {
+            avgFrameTime += time;
+        }
+        avgFrameTime /= frameTimes.size();
+
         while (SDL_PollEvent(&e) != 0) {
             ImGui_ImplSDL2_ProcessEvent(&e);
             if (e.type == SDL_QUIT) {
@@ -381,8 +392,8 @@ void Renderer::run() {
         ImGui::DockSpaceOverViewport(dockspaceID, nullptr, dockspaceFlags);
 
         ImGui::Begin("info");
-        // ImGui::Text("cpu frame time: %2.0f ms (%4.0f fps)", delta,
-        //             1000 / delta);
+        ImGui::Text("cpu frame time: %2.2f ms (%4.0f fps)", avgFrameTime,
+                    1000 / avgFrameTime);
         // ImGui::ColorPicker4("clear color", clearColor.data());
         ImGui::DragFloat("angle", &tmpAngle);
         ImGui::End();

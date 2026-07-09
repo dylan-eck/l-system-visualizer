@@ -4,6 +4,7 @@
 #include <span>
 #include <vector>
 #include <string>
+#include <deque>
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -72,6 +73,9 @@ private:
     VkDescriptorSet imguiDescriptorSet;
 
     float tmpAngle = 60.0f;
+
+    size_t frameTimeWindow = 10;
+    std::deque<double> frameTimes;
 
     void initImmediateCommands();
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);
