@@ -77,6 +77,13 @@ private:
     size_t frameTimeWindow = 10;
     std::deque<double> frameTimes;
 
+    float cameraYaw = 0.0f;
+    float cameraPitch = 0.0f;
+    float cameraDistance = 3.0f;
+    glm::vec3 cameraPosition{0.0f, 1.0f, -2.0f};
+
+    GPUMesh axes;
+
     void initImmediateCommands();
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);
 

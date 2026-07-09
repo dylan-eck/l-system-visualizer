@@ -127,18 +127,37 @@ void Renderer::init(RenderConfig config) {
     };
 
     vmaCreateAllocator(&allocatorInfo, &allocator);
-
     createSwapchain(windowExtent.width, windowExtent.height);
-
     initImgui();
-
     initImmediateCommands();
-
     createDrawImage();
-
     initFrameDatas();
-
     buildPipelines();
+
+    std::array<Vertex, 6> axesVerts;
+    axesVerts[0].position = {0, 0, 0};
+    axesVerts[1].position = {0, 0, 0};
+    axesVerts[2].position = {0, 0, 0};
+    axesVerts[3].position = {1, 0, 0};
+    axesVerts[4].position = {0, 1, 0};
+    axesVerts[5].position = {0, 0, 1};
+
+    axesVerts[0].color = {1, 0, 0, 1};
+    axesVerts[1].color = {0, 1, 0, 1};
+    axesVerts[2].color = {0, 0, 1, 1};
+    axesVerts[3].color = {1, 0, 0, 1};
+    axesVerts[4].color = {0, 1, 0, 1};
+    axesVerts[5].color = {0, 0, 1, 1};
+
+    std::array<uint32_t, 6> axesIdxs;
+    axesIdxs[0] = 0;
+    axesIdxs[1] = 3;
+    axesIdxs[2] = 1;
+    axesIdxs[3] = 4;
+    axesIdxs[4] = 2;
+    axesIdxs[5] = 5;
+
+    axes = uploadMesh(axesVerts, axesIdxs);
 
     isInitialized = true;
 }
@@ -151,6 +170,8 @@ void Renderer::cleanup() {
     vkDeviceWaitIdle(device);
 
     destroyPipelines();
+
+    destroyMesh(axes);
 
     destroyFrameDatas();
 
@@ -252,23 +273,36 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
         45.0f, (float)mainDrawExtent.width / mainDrawExtent.height, 0.1f,
         100.0f);
 
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.0f, -2.0f), glm::vec3(0.0f),
+    cameraPosition.x = cameraDistance * cos(cameraPitch) * sin(cameraYaw);
+    cameraPosition.y = cameraDistance * sin(cameraPitch);
+    cameraPosition.z = cameraDistance * cos(cameraPitch) * cos(cameraYaw);
+    glm::mat4 view = glm::lookAt(cameraPosition, glm::vec3(0.0f),
                                  glm::vec3(0.0f, -1.0f, 0.0f));
 
     glm::mat4 model =
         glm::rotate(glm::mat4(1.0f), static_cast<float>(0.0 * frameNumber),
                     glm::vec3(0.0f, 1.0f, 0.0f));
 
+    // draw axes
     GPUDrawPushConstants pushConstants{
+        .worldMatrix = proj * view * model,
+        .vertexBuffer = axes.vertexBufferAddress,
+    };
+    vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                       sizeof(GPUDrawPushConstants), &pushConstants);
+    vkCmdBindIndexBuffer(cmd, axes.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, linePipeline);
+    vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+
+    // draw l-system
+    pushConstants = {
         .worldMatrix = proj * view * model,
         .vertexBuffer = currentFrame.vertexBufferAddress,
     };
     vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                        sizeof(GPUDrawPushConstants), &pushConstants);
-
     vkCmdBindIndexBuffer(cmd, currentFrame.indexBuffer.buffer, 0,
                          VK_INDEX_TYPE_UINT32);
-
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, linePipeline);
     vkCmdDrawIndexed(cmd, LSys.indices.size(), 1, 0, 0, 0);
 
@@ -387,6 +421,7 @@ void Renderer::run() {
         ImGuiID dockspaceID = ImGui::GetID("MainDockSpace");
         ImGuiDockNodeFlags dockspaceFlags =
             ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoWindowMenuButton;
+        ImGuiIO &io = ImGui::GetIO();
         ImGui::DockSpaceOverViewport(dockspaceID, nullptr, dockspaceFlags);
 
         ImGui::Begin("info");
@@ -414,6 +449,26 @@ void Renderer::run() {
 
         ImGui::Image((ImTextureID)imguiDescriptorSet, viewportSize,
                      ImVec2(0, 0), ImVec2(uvX, uvY));
+
+        // camera control
+        if (ImGui::IsWindowHovered() &&
+            ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            ImVec2 delta = io.MouseDelta;
+
+            float sensitivity = 0.01f;
+            cameraYaw += delta.x * sensitivity;
+            cameraPitch += delta.y * sensitivity;
+            cameraPitch = glm::clamp(cameraPitch, glm::radians(-89.0f),
+                                     glm::radians(89.0f));
+        }
+
+        if (ImGui::IsWindowHovered() && (io.MouseWheel != 0.0f)) {
+            SPDLOG_DEBUG("mouse scroll on viewport: {}", io.MouseWheel);
+
+            float zoomSpeed = 1.1f;
+            cameraPosition *= std::pow(1.0f / zoomSpeed, -io.MouseWheel);
+        }
+
         ImGui::End();
         ImGui::PopStyleVar();
 
