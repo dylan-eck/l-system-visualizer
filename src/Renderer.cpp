@@ -141,11 +141,6 @@ void Renderer::init(RenderConfig config) {
     buildPipelines();
 
     // ### L-SYS STUFF
-    MeshData LSys = generateLSystem();
-
-    std::cout << "vertex count: " << LSys.vertices.size() << std::endl;
-
-    line = uploadMesh(LSys.vertices, LSys.indices);
 
     isInitialized = true;
 }
@@ -190,6 +185,12 @@ void Renderer::cleanup() {
 
 void Renderer::draw(ImDrawData *imGuiDrawData) {
     FrameData &currentFrame = getCurrentFrame();
+
+    MeshData LSys = generateLSystem();
+    memcpy(currentFrame.vertexBuffer.allocationInfo.pMappedData,
+           LSys.vertices.data(), sizeof(Vertex) * LSys.vertices.size());
+    memcpy(currentFrame.indexBuffer.allocationInfo.pMappedData,
+           LSys.indices.data(), sizeof(uint32_t) * LSys.indices.size());
 
     VK_CHECK(vkWaitForFences(device, 1, &currentFrame.renderFinishedFence, true,
                              1000000000));
@@ -266,27 +267,16 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
 
     GPUDrawPushConstants pushConstants{
         .worldMatrix = proj * view * model,
-        .vertexBuffer = rectangle.vertexBufferAddress,
+        .vertexBuffer = currentFrame.vertexBufferAddress,
     };
-
-    // vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
-    //                    sizeof(GPUDrawPushConstants), &pushConstants);
-
-    // vkCmdBindIndexBuffer(cmd, rectangle.indices.buffer, 0,
-    //                      VK_INDEX_TYPE_UINT32);
-
-    // vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
-    // vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
-
-    pushConstants.vertexBuffer = line.vertexBufferAddress;
-
     vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                        sizeof(GPUDrawPushConstants), &pushConstants);
 
-    vkCmdBindIndexBuffer(cmd, line.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(cmd, currentFrame.indexBuffer.buffer, 0,
+                         VK_INDEX_TYPE_UINT32);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, linePipeline);
-    vkCmdDrawIndexed(cmd, lineIdxs.size(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, LSys.indices.size(), 1, 0, 0, 0);
 
     vkCmdEndRendering(cmd);
 
@@ -721,6 +711,14 @@ void Renderer::initFrameDatas() {
                          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                          VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        VkBufferDeviceAddressInfo addressInfo{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .buffer = frames[i].vertexBuffer.buffer,
+        };
+
+        frames[i].vertexBufferAddress =
+            vkGetBufferDeviceAddress(device, &addressInfo);
     }
 }
 

@@ -45,6 +45,7 @@ struct FrameData {
     VkFence renderFinishedFence;
 
     AllocatedBuffer vertexBuffer;
+    VkDeviceAddress vertexBufferAddress;
     AllocatedBuffer indexBuffer;
 };
 
