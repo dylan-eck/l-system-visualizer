@@ -67,12 +67,6 @@ private:
     VkPipeline linePipeline;
     VkPipeline meshPipeline;
 
-    std::vector<Vertex> lineVerts;
-    std::vector<uint32_t> lineIdxs;
-
-    GPUMesh rectangle;
-    GPUMesh line;
-
     AllocatedImage mainDrawImage;
     VkExtent2D mainDrawExtent;
     VkDescriptorSet imguiDescriptorSet;

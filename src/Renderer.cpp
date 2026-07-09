@@ -152,11 +152,7 @@ void Renderer::cleanup() {
 
     vkDeviceWaitIdle(device);
 
-    destroyBuffer(rectangle.indices);
-    destroyBuffer(rectangle.vertices);
-
     destroyPipelines();
-    destroyMesh(line);
 
     destroyFrameDatas();
 
@@ -702,13 +698,13 @@ void Renderer::initFrameDatas() {
 
         frames[i].vertexBuffer =
             createBuffer(sizeof(Vertex) * 8192,
-                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                          VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         frames[i].indexBuffer =
             createBuffer(sizeof(Vertex) * 8192,
-                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                         VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                          VMA_MEMORY_USAGE_CPU_TO_GPU);
 
@@ -995,7 +991,6 @@ MeshData Renderer::generateLSystem() {
     std::map<std::string, std::string> productions{
         {"F", "F+F--F+F"}, {"+", "+"}, {"-", "-"}};
     std::string axiom = "F";
-
     std::string result = axiom;
 
     for (int i = 0; i < 5; i++) {
@@ -1017,31 +1012,33 @@ MeshData Renderer::generateLSystem() {
     };
 
     glm::mat4 currTransform = glm::mat4(1.0f);
-    lineVerts.push_back(Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}});
+    std::vector<Vertex> vertices;
+    vertices.push_back(Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}});
 
     for (const auto &c : result) {
         currTransform *= transforms[c];
         glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
-        lineVerts.push_back(
+        vertices.push_back(
             Vertex{.position = currPosition, .color = {1, 1, 1, 1}});
     }
 
     glm::vec3 avgPos{0};
-    for (const auto &v : lineVerts) {
+    for (const auto &v : vertices) {
         avgPos += v.position;
     }
-    avgPos /= lineVerts.size();
+    avgPos /= vertices.size();
 
-    for (auto &v : lineVerts) {
+    for (auto &v : vertices) {
         v.position -= avgPos;
     }
 
-    lineIdxs.resize(2 * lineVerts.size() - 2);
-    for (int i = 0; i < (2 * lineVerts.size() - 2); i++) {
-        lineIdxs[i] = (i + 1) / 2;
+    std::vector<uint32_t> indices;
+    indices.resize(2 * vertices.size() - 2);
+    for (int i = 0; i < (2 * vertices.size() - 2); i++) {
+        indices[i] = (i + 1) / 2;
     }
 
-    MeshData meshData{.vertices = lineVerts, .indices = lineIdxs};
+    MeshData meshData{.vertices = vertices, .indices = indices};
 
     return meshData;
 }
