@@ -160,7 +160,7 @@ void Renderer::init(RenderConfig config) {
     }
 
     std::map<char, glm::mat4> transforms{
-        {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
+        {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0.05, 0, 0))},
         {'+',
          glm::rotate(glm::mat4(1.0f), glm::radians(80.0f), glm::vec3(0, 0, 1))},
         {'-', glm::rotate(glm::mat4(1.0f), glm::radians(-80.0f),
@@ -192,55 +192,9 @@ void Renderer::init(RenderConfig config) {
         lineIdxs[i] = (i + 1) / 2;
     }
 
-    // // lines for x, y and z axes
-    // std::array<Vertex, 6> lineVerts;
-    // lineVerts[0].position = {0, 0, 0};
-    // lineVerts[1].position = {0, 0, 0};
-    // lineVerts[2].position = {0, 0, 0};
-    // lineVerts[3].position = {1, 0, 0};
-    // lineVerts[4].position = {0, 1, 0};
-    // lineVerts[5].position = {0, 0, 1};
-
-    // lineVerts[0].color = {1, 0, 0, 1};
-    // lineVerts[1].color = {0, 1, 0, 1};
-    // lineVerts[2].color = {0, 0, 1, 1};
-    // lineVerts[3].color = {1, 0, 0, 1};
-    // lineVerts[4].color = {0, 1, 0, 1};
-    // lineVerts[5].color = {0, 0, 1, 1};
-
-    // std::array<uint32_t, 6> lineIdxs;
-    // lineIdxs[0] = 0;
-    // lineIdxs[1] = 3;
-    // lineIdxs[2] = 1;
-    // lineIdxs[3] = 4;
-    // lineIdxs[4] = 2;
-    // lineIdxs[5] = 5;
+    std::cout << "vertex count: " << lineVerts.size() << std::endl;
 
     line = uploadMesh(lineVerts, lineIdxs);
-
-    // std::array<Vertex, 4> rectVertices;
-
-    // rectVertices[0].position = {0.5, -0.5, 0};
-    // rectVertices[1].position = {0.5, 0.5, 0};
-    // rectVertices[2].position = {-0.5, -0.5, 0};
-    // rectVertices[3].position = {-0.5, 0.5, 0};
-
-    // rectVertices[0].color = {0, 0, 0, 1};
-    // rectVertices[1].color = {0.5, 0.5, 0.5, 1};
-    // rectVertices[2].color = {1, 0, 0, 1};
-    // rectVertices[3].color = {0, 1, 0, 1};
-
-    // std::array<uint32_t, 6> rectIndices;
-
-    // rectIndices[0] = 0;
-    // rectIndices[1] = 1;
-    // rectIndices[2] = 2;
-
-    // rectIndices[3] = 2;
-    // rectIndices[4] = 1;
-    // rectIndices[5] = 3;
-
-    // rectangle = uploadMesh(rectVertices, rectIndices);
 
     isInitialized = true;
 }
@@ -356,7 +310,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
                                  glm::vec3(0.0f, -1.0f, 0.0f));
 
     glm::mat4 model =
-        glm::rotate(glm::mat4(1.0f), static_cast<float>(0.01 * frameNumber),
+        glm::rotate(glm::mat4(1.0f), static_cast<float>(0.0 * frameNumber),
                     glm::vec3(0.0f, 1.0f, 0.0f));
 
     GPUDrawPushConstants pushConstants{
@@ -373,7 +327,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
     // vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
     // vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 
-    pushConstants.vertexBuffer = line.vertexBufferAddress,
+    pushConstants.vertexBuffer = line.vertexBufferAddress;
 
     vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                        sizeof(GPUDrawPushConstants), &pushConstants);
@@ -490,9 +444,9 @@ void Renderer::run() {
         ImGui::DockSpaceOverViewport(dockspaceID, nullptr, dockspaceFlags);
 
         ImGui::Begin("info");
-        ImGui::Text("cpu frame time: %2.0f ms (%4.0f fps)", delta,
-                    1000 / delta);
-        ImGui::ColorPicker4("clear color", clearColor.data());
+        // ImGui::Text("cpu frame time: %2.0f ms (%4.0f fps)", delta,
+        //             1000 / delta);
+        // ImGui::ColorPicker4("clear color", clearColor.data());
         ImGui::DragFloat("angle", &tmpAngle);
         ImGui::End();
 
@@ -804,6 +758,18 @@ void Renderer::initFrameDatas() {
 
         VK_CHECK(vkCreateFence(device, &fenceInfo, nullptr,
                                &frames[i].renderFinishedFence));
+
+        frames[i].vertexBuffer =
+            createBuffer(sizeof(Vertex) * 8192,
+                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                         VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        frames[i].indexBuffer =
+            createBuffer(sizeof(Vertex) * 8192,
+                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                         VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 }
 
@@ -812,6 +778,8 @@ void Renderer::destroyFrameDatas() {
         vkDestroyCommandPool(device, frame.commandPool, nullptr);
         vkDestroySemaphore(device, frame.imageAvailableSemaphore, nullptr);
         vkDestroyFence(device, frame.renderFinishedFence, nullptr);
+        destroyBuffer(frame.vertexBuffer);
+        destroyBuffer(frame.indexBuffer);
     }
 }
 

@@ -14,14 +14,6 @@ struct RenderConfig {
     std::string executablePath = "";
 };
 
-struct FrameData {
-    VkCommandPool commandPool;
-    VkCommandBuffer commandBuffer;
-
-    VkSemaphore imageAvailableSemaphore;
-    VkFence renderFinishedFence;
-};
-
 struct Vertex {
     glm::vec3 position;
     float uvX;
@@ -43,6 +35,17 @@ struct AllocatedBuffer {
     VkBuffer buffer;
     VmaAllocation allocation;
     VmaAllocationInfo allocationInfo;
+};
+
+struct FrameData {
+    VkCommandPool commandPool;
+    VkCommandBuffer commandBuffer;
+
+    VkSemaphore imageAvailableSemaphore;
+    VkFence renderFinishedFence;
+
+    AllocatedBuffer vertexBuffer;
+    AllocatedBuffer indexBuffer;
 };
 
 struct GPUMesh {
