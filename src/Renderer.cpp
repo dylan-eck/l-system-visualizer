@@ -141,60 +141,11 @@ void Renderer::init(RenderConfig config) {
     buildPipelines();
 
     // ### L-SYS STUFF
-    std::vector<std::string> variables{"F"};
-    std::vector<std::string> constants{"+", "-"};
-    std::map<std::string, std::string> productions{
-        {"F", "F+F--F+F"}, {"+", "+"}, {"-", "-"}};
-    std::string axiom = "F";
+    MeshData LSys = generateLSystem();
 
-    std::string result = axiom;
+    std::cout << "vertex count: " << LSys.vertices.size() << std::endl;
 
-    for (int i = 0; i < 5; i++) {
-        std::string next = "";
-
-        for (const auto &c : result) {
-            std::string s{c};
-            next.append(productions[s]);
-        }
-        result = next;
-    }
-
-    std::map<char, glm::mat4> transforms{
-        {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0.05, 0, 0))},
-        {'+',
-         glm::rotate(glm::mat4(1.0f), glm::radians(80.0f), glm::vec3(0, 0, 1))},
-        {'-', glm::rotate(glm::mat4(1.0f), glm::radians(-80.0f),
-                          glm::vec3(0, 0, 1))},
-    };
-
-    glm::mat4 currTransform = glm::mat4(1.0f);
-    lineVerts.push_back(Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}});
-
-    for (const auto &c : result) {
-        currTransform *= transforms[c];
-        glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
-        lineVerts.push_back(
-            Vertex{.position = currPosition, .color = {1, 1, 1, 1}});
-    }
-
-    glm::vec3 avgPos{0};
-    for (const auto &v : lineVerts) {
-        avgPos += v.position;
-    }
-    avgPos /= lineVerts.size();
-
-    for (auto &v : lineVerts) {
-        v.position -= avgPos;
-    }
-
-    lineIdxs.resize(2 * lineVerts.size() - 2);
-    for (int i = 0; i < (2 * lineVerts.size() - 2); i++) {
-        lineIdxs[i] = (i + 1) / 2;
-    }
-
-    std::cout << "vertex count: " << lineVerts.size() << std::endl;
-
-    line = uploadMesh(lineVerts, lineIdxs);
+    line = uploadMesh(LSys.vertices, LSys.indices);
 
     isInitialized = true;
 }
@@ -1038,5 +989,62 @@ void Renderer::printMat4(glm::mat4 m) {
 
 std::string Renderer::vec3ToString(glm::vec3 v) {
     return fmt::format("{: .2f} {: .2f} {: .2f}", v[0], v[1], v[2]);
+}
+
+MeshData Renderer::generateLSystem() {
+    std::vector<std::string> variables{"F"};
+    std::vector<std::string> constants{"+", "-"};
+    std::map<std::string, std::string> productions{
+        {"F", "F+F--F+F"}, {"+", "+"}, {"-", "-"}};
+    std::string axiom = "F";
+
+    std::string result = axiom;
+
+    for (int i = 0; i < 5; i++) {
+        std::string next = "";
+
+        for (const auto &c : result) {
+            std::string s{c};
+            next.append(productions[s]);
+        }
+        result = next;
+    }
+
+    std::map<char, glm::mat4> transforms{
+        {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0.05, 0, 0))},
+        {'+',
+         glm::rotate(glm::mat4(1.0f), glm::radians(80.0f), glm::vec3(0, 0, 1))},
+        {'-', glm::rotate(glm::mat4(1.0f), glm::radians(-80.0f),
+                          glm::vec3(0, 0, 1))},
+    };
+
+    glm::mat4 currTransform = glm::mat4(1.0f);
+    lineVerts.push_back(Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}});
+
+    for (const auto &c : result) {
+        currTransform *= transforms[c];
+        glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
+        lineVerts.push_back(
+            Vertex{.position = currPosition, .color = {1, 1, 1, 1}});
+    }
+
+    glm::vec3 avgPos{0};
+    for (const auto &v : lineVerts) {
+        avgPos += v.position;
+    }
+    avgPos /= lineVerts.size();
+
+    for (auto &v : lineVerts) {
+        v.position -= avgPos;
+    }
+
+    lineIdxs.resize(2 * lineVerts.size() - 2);
+    for (int i = 0; i < (2 * lineVerts.size() - 2); i++) {
+        lineIdxs[i] = (i + 1) / 2;
+    }
+
+    MeshData meshData{.vertices = lineVerts, .indices = lineIdxs};
+
+    return meshData;
 }
 } // namespace lsv
