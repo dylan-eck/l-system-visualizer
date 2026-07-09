@@ -182,7 +182,7 @@ void Renderer::cleanup() {
 void Renderer::draw(ImDrawData *imGuiDrawData) {
     FrameData &currentFrame = getCurrentFrame();
 
-    MeshData LSys = generateLSystem();
+    MeshData LSys = generateLSystem(tmpAngle);
     memcpy(currentFrame.vertexBuffer.allocationInfo.pMappedData,
            LSys.vertices.data(), sizeof(Vertex) * LSys.vertices.size());
     memcpy(currentFrame.indexBuffer.allocationInfo.pMappedData,
@@ -985,7 +985,7 @@ std::string Renderer::vec3ToString(glm::vec3 v) {
     return fmt::format("{: .2f} {: .2f} {: .2f}", v[0], v[1], v[2]);
 }
 
-MeshData Renderer::generateLSystem() {
+MeshData Renderer::generateLSystem(float angle) {
     std::vector<std::string> variables{"F"};
     std::vector<std::string> constants{"+", "-"};
     std::map<std::string, std::string> productions{
@@ -1004,10 +1004,10 @@ MeshData Renderer::generateLSystem() {
     }
 
     std::map<char, glm::mat4> transforms{
-        {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0.05, 0, 0))},
+        {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
         {'+',
-         glm::rotate(glm::mat4(1.0f), glm::radians(80.0f), glm::vec3(0, 0, 1))},
-        {'-', glm::rotate(glm::mat4(1.0f), glm::radians(-80.0f),
+         glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 0, 1))},
+        {'-', glm::rotate(glm::mat4(1.0f), glm::radians(-angle),
                           glm::vec3(0, 0, 1))},
     };
 

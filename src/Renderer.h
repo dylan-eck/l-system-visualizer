@@ -110,6 +110,6 @@ private:
     void printMat4(glm::mat4 m);
     std::string vec3ToString(glm::vec3 v);
 
-    MeshData generateLSystem();
+    MeshData generateLSystem(float angle);
 };
 } // namespace lsv
