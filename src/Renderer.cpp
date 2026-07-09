@@ -140,8 +140,6 @@ void Renderer::init(RenderConfig config) {
 
     buildPipelines();
 
-    // ### L-SYS STUFF
-
     isInitialized = true;
 }
 
@@ -395,7 +393,9 @@ void Renderer::run() {
         ImGui::Text("cpu frame time: %2.2f ms (%4.0f fps)", avgFrameTime,
                     1000 / avgFrameTime);
         // ImGui::ColorPicker4("clear color", clearColor.data());
-        ImGui::DragFloat("angle", &tmpAngle);
+        ImGui::DragFloat("x angle", &tmpAngle.x);
+        ImGui::DragFloat("y angle", &tmpAngle.y);
+        ImGui::DragFloat("z angle", &tmpAngle.z);
         ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -996,7 +996,7 @@ std::string Renderer::vec3ToString(glm::vec3 v) {
     return fmt::format("{: .2f} {: .2f} {: .2f}", v[0], v[1], v[2]);
 }
 
-MeshData Renderer::generateLSystem(float angle) {
+MeshData Renderer::generateLSystem(glm::vec3 rotation) {
     std::vector<std::string> variables{"F"};
     std::vector<std::string> constants{"+", "-"};
     std::map<std::string, std::string> productions{
@@ -1014,13 +1014,19 @@ MeshData Renderer::generateLSystem(float angle) {
         result = next;
     }
 
+    glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.x),
+                                 glm::vec3(1, 0, 0));
+    glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.y),
+                                 glm::vec3(0, 1, 0));
+    glm::mat4 rotZ = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.z),
+                                 glm::vec3(0, 0, 1));
+    glm::mat4 rot = rotY * rotX * rotZ;
+    glm::mat4 rotInv = glm::transpose(rot);
+
     std::map<char, glm::mat4> transforms{
         {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
-        {'+',
-         glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 0, 1))},
-        {'-', glm::rotate(glm::mat4(1.0f), glm::radians(-angle),
-                          glm::vec3(0, 0, 1))},
-    };
+        {'+', rot},
+        {'-', rotInv}};
 
     glm::mat4 currTransform = glm::mat4(1.0f);
     std::vector<Vertex> vertices;

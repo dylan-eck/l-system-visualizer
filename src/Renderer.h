@@ -72,7 +72,7 @@ private:
     VkExtent2D mainDrawExtent;
     VkDescriptorSet imguiDescriptorSet;
 
-    float tmpAngle = 60.0f;
+    glm::vec3 tmpAngle{0.0f, 0.0f, 60.0f};
 
     size_t frameTimeWindow = 10;
     std::deque<double> frameTimes;
@@ -114,6 +114,6 @@ private:
     void printMat4(glm::mat4 m);
     std::string vec3ToString(glm::vec3 v);
 
-    MeshData generateLSystem(float angle);
+    MeshData generateLSystem(glm::vec3 rotation);
 };
 } // namespace lsv
