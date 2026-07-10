@@ -89,6 +89,7 @@ private:
     std::array<uint32_t, MAX_VERTEX_COUNT> indices;
     size_t vertexCount = 0;
     size_t indexCount = 0;
+    int lsStringLength = 0;
 
     void initImmediateCommands();
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);

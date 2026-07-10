@@ -427,6 +427,9 @@ void Renderer::run() {
         ImGui::Begin("info");
         ImGui::Text("cpu frame time: %2.2f ms (%4.0f fps)", avgFrameTime,
                     1000 / avgFrameTime);
+        ImGui::Text("L-system string length: %d", lsStringLength);
+        ImGui::Text("vertex count: %lu", vertexCount);
+        ImGui::Text("index count (with restarts): %lu", indexCount);
         // ImGui::ColorPicker4("clear color", clearColor.data());
         ImGui::DragFloat("x angle", &tmpAngle.x);
         ImGui::DragFloat("y angle", &tmpAngle.y);
@@ -1070,6 +1073,8 @@ void Renderer::generateLSystem(glm::vec3 rotation) {
         }
         result = next;
     }
+
+    lsStringLength = result.length();
 
     glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.x),
                                  glm::vec3(1, 0, 0));
