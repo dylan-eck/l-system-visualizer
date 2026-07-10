@@ -1066,13 +1066,20 @@ void Renderer::generateLSystem(glm::vec3 rotation) {
         result = next;
     }
 
+    glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.x),
+                                 glm::vec3(1, 0, 0));
+    glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.y),
+                                 glm::vec3(0, 1, 0));
+    glm::mat4 rotZ = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.z),
+                                 glm::vec3(0, 0, 1));
+    glm::mat4 rot = rotY * rotX * rotZ;
+    glm::mat4 rotInv = glm::transpose(rot);
+
     std::map<char, glm::mat4> transforms{
         {'0', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
         {'1', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
-        {'[',
-         glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0, 0, 1))},
-        {']', glm::rotate(glm::mat4(1.0f), glm::radians(-45.0f),
-                          glm::vec3(0, 0, 1))},
+        {'[', rot},
+        {']', rotInv},
     };
 
     glm::mat4 currTransform = glm::mat4(1.0f);
