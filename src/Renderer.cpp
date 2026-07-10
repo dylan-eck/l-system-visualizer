@@ -1051,8 +1051,7 @@ std::string Renderer::vec3ToString(glm::vec3 v) {
 }
 
 void Renderer::generateLSystem(glm::vec3 rotation) {
-    std::map<std::string, std::string> rules{
-        {"1", "11"}, {"0", "1[0]0"}, {"[", "["}, {"]", "]"}};
+    std::map<std::string, std::string> rules{{"1", "11"}, {"0", "1[0]0"}};
     std::string axiom = "0";
     std::string result = axiom;
 
@@ -1061,7 +1060,13 @@ void Renderer::generateLSystem(glm::vec3 rotation) {
 
         for (const auto &c : result) {
             std::string s{c};
-            next.append(rules[s]);
+            auto it = rules.find(s);
+
+            if (it != rules.end()) {
+                next.append(rules[s]);
+            } else {
+                next.append(s);
+            }
         }
         result = next;
     }
