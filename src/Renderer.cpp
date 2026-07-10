@@ -463,10 +463,8 @@ void Renderer::run() {
         }
 
         if (ImGui::IsWindowHovered() && (io.MouseWheel != 0.0f)) {
-            SPDLOG_DEBUG("mouse scroll on viewport: {}", io.MouseWheel);
-
             float zoomSpeed = 1.1f;
-            cameraPosition *= std::pow(1.0f / zoomSpeed, -io.MouseWheel);
+            cameraDistance *= std::pow(1.0f / zoomSpeed, -io.MouseWheel);
         }
 
         ImGui::End();
