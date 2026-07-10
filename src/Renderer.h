@@ -84,6 +84,12 @@ private:
 
     GPUMesh axes;
 
+    static constexpr size_t MAX_VERTEX_COUNT = 8192;
+    std::array<Vertex, MAX_VERTEX_COUNT> vertices;
+    std::array<uint32_t, MAX_VERTEX_COUNT> indices;
+    size_t vertexCount = 0;
+    size_t indexCount = 0;
+
     void initImmediateCommands();
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);
 
@@ -121,6 +127,6 @@ private:
     void printMat4(glm::mat4 m);
     std::string vec3ToString(glm::vec3 v);
 
-    MeshData generateLSystem(glm::vec3 rotation);
+    void generateLSystem(glm::vec3 rotation);
 };
 } // namespace lsv

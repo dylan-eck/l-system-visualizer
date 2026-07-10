@@ -201,11 +201,11 @@ void Renderer::cleanup() {
 void Renderer::draw(ImDrawData *imGuiDrawData) {
     FrameData &currentFrame = getCurrentFrame();
 
-    MeshData LSys = generateLSystem(tmpAngle);
+    generateLSystem(tmpAngle);
     memcpy(currentFrame.vertexBuffer.allocationInfo.pMappedData,
-           LSys.vertices.data(), sizeof(Vertex) * LSys.vertices.size());
-    memcpy(currentFrame.indexBuffer.allocationInfo.pMappedData,
-           LSys.indices.data(), sizeof(uint32_t) * LSys.indices.size());
+           vertices.data(), sizeof(Vertex) * vertexCount);
+    memcpy(currentFrame.indexBuffer.allocationInfo.pMappedData, indices.data(),
+           sizeof(uint32_t) * indexCount);
 
     VK_CHECK(vkWaitForFences(device, 1, &currentFrame.renderFinishedFence, true,
                              1000000000));
@@ -304,7 +304,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
     vkCmdBindIndexBuffer(cmd, currentFrame.indexBuffer.buffer, 0,
                          VK_INDEX_TYPE_UINT32);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, linePipeline);
-    vkCmdDrawIndexed(cmd, LSys.indices.size(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, indexCount, 1, 0, 0, 0);
 
     vkCmdEndRendering(cmd);
 
@@ -761,13 +761,13 @@ void Renderer::initFrameDatas() {
                                &frames[i].renderFinishedFence));
 
         frames[i].vertexBuffer =
-            createBuffer(sizeof(Vertex) * 8192,
+            createBuffer(sizeof(Vertex) * MAX_VERTEX_COUNT,
                          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                          VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         frames[i].indexBuffer =
-            createBuffer(sizeof(Vertex) * 8192,
+            createBuffer(sizeof(Vertex) * MAX_VERTEX_COUNT,
                          VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                          VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -1050,13 +1050,13 @@ std::string Renderer::vec3ToString(glm::vec3 v) {
     return fmt::format("{: .2f} {: .2f} {: .2f}", v[0], v[1], v[2]);
 }
 
-MeshData Renderer::generateLSystem(glm::vec3 rotation) {
+void Renderer::generateLSystem(glm::vec3 rotation) {
     std::map<std::string, std::string> rules{
         {"1", "11"}, {"0", "1[0]0"}, {"[", "["}, {"]", "]"}};
     std::string axiom = "0";
     std::string result = axiom;
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 8; i++) {
         std::string next = "";
 
         for (const auto &c : result) {
@@ -1076,12 +1076,14 @@ MeshData Renderer::generateLSystem(glm::vec3 rotation) {
     };
 
     glm::mat4 currTransform = glm::mat4(1.0f);
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    uint32_t currentIndex = 0;
+    vertexCount = 0;
+    indexCount = 0;
+    size_t i = 0;
 
-    vertices.push_back(Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}});
-    indices.push_back(currentIndex);
+    vertices[vertexCount++] =
+        Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}};
+
+    indices[i++] = indexCount;
 
     std::stack<glm::mat4> stack;
 
@@ -1093,29 +1095,29 @@ MeshData Renderer::generateLSystem(glm::vec3 rotation) {
         if (c == ']') {
             currTransform = stack.top();
             stack.pop();
-            indices.push_back(0xFFFFFFFF);
+            indices[i++] = 0xFFFFFFFF;
         }
 
         currTransform *= transforms[c];
         glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
-        vertices.push_back(
-            Vertex{.position = currPosition, .color = {1, 1, 1, 1}});
 
-        currentIndex++;
-        indices.push_back(currentIndex);
+        vertices[vertexCount++] =
+            Vertex{.position = currPosition, .color = {1, 1, 1, 1}};
+
+        indexCount++;
+        indices[i++] = indexCount;
     }
+
+    indexCount = i;
 
     glm::vec3 avgPos{0};
-    for (const auto &v : vertices) {
-        avgPos += v.position;
+    for (int i = 0; i < vertexCount; i++) {
+        avgPos += vertices[i].position;
     }
-    avgPos /= vertices.size();
+    avgPos /= vertexCount;
 
-    for (auto &v : vertices) {
-        v.position -= avgPos;
+    for (int i = 0; i < vertexCount; i++) {
+        vertices[i].position -= avgPos;
     }
-
-    MeshData meshData{.vertices = vertices, .indices = indices};
-    return meshData;
 }
 } // namespace lsv
