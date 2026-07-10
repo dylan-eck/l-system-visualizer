@@ -72,8 +72,6 @@ private:
     VkExtent2D mainDrawExtent;
     VkDescriptorSet imguiDescriptorSet;
 
-    glm::vec3 tmpAngle{0.0f, 0.0f, 45.0f};
-
     size_t frameTimeWindow = 10;
     std::deque<double> frameTimes;
 
@@ -84,6 +82,8 @@ private:
 
     GPUMesh axes;
 
+    int lsIterationCount = 8;
+    glm::vec3 tmpAngle{0.0f, 0.0f, 45.0f};
     static constexpr size_t MAX_VERTEX_COUNT = 8192;
     std::array<Vertex, MAX_VERTEX_COUNT> vertices;
     std::array<uint32_t, MAX_VERTEX_COUNT> indices;

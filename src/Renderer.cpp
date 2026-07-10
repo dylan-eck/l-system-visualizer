@@ -425,6 +425,7 @@ void Renderer::run() {
         ImGui::DockSpaceOverViewport(dockspaceID, nullptr, dockspaceFlags);
 
         ImGui::Begin("info");
+        ImGui::DragInt("iterations: ", &lsIterationCount);
         ImGui::Text("cpu frame time: %2.2f ms (%4.0f fps)", avgFrameTime,
                     1000 / avgFrameTime);
         ImGui::Text("L-system string length: %d", lsStringLength);
@@ -1058,7 +1059,7 @@ void Renderer::generateLSystem(glm::vec3 rotation) {
     std::string axiom = "0";
     std::string result = axiom;
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < lsIterationCount; i++) {
         std::string next = "";
 
         for (const auto &c : result) {
