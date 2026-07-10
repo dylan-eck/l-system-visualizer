@@ -16,8 +16,11 @@ public:
     PipelineBuilder &setShaders(VkShaderModule vertexShader,
                                 VkShaderModule fragmentShader);
     PipelineBuilder &setInputTopology(VkPrimitiveTopology topology);
+    PipelineBuilder &setPrimitiveRestartEnabled(VkBool32 enabled = VK_FALSE);
     PipelineBuilder &setPolygonMode(VkPolygonMode mode);
-    PipelineBuilder &setCullMode(VkCullModeFlags mode, VkFrontFace frontFace);
+    PipelineBuilder &
+    setCullMode(VkCullModeFlags mode,
+                VkFrontFace frontFace = VK_FRONT_FACE_CLOCKWISE);
     PipelineBuilder &setMultisampleDisabled();
     PipelineBuilder &setBlendingDisabled();
     PipelineBuilder &setColorAttachmentFormat(VkFormat format);

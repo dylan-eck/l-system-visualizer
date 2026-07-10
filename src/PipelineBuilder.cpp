@@ -98,7 +98,12 @@ PipelineBuilder &PipelineBuilder::setShaders(VkShaderModule vertexShader,
 PipelineBuilder &
 PipelineBuilder::setInputTopology(VkPrimitiveTopology topology) {
     inputAssemblyState.topology = topology;
-    inputAssemblyState.primitiveRestartEnable = VK_FALSE;
+
+    return *this;
+}
+
+PipelineBuilder &PipelineBuilder::setPrimitiveRestartEnabled(VkBool32 enabled) {
+    inputAssemblyState.primitiveRestartEnable = enabled;
 
     return *this;
 }

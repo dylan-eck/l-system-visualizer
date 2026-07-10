@@ -917,9 +917,10 @@ void Renderer::buildPipelines() {
         PipelineBuilder()
             .setLayout(pipelineLayout)
             .setShaders(shaderModule, shaderModule)
-            .setInputTopology(VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
+            .setInputTopology(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP)
+            .setPrimitiveRestartEnabled(VK_TRUE)
             .setPolygonMode(VK_POLYGON_MODE_FILL)
-            .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
+            .setCullMode(VK_CULL_MODE_NONE)
             .setMultisampleDisabled()
             .setBlendingDisabled()
             .setDepthTestDisabled()
@@ -1050,46 +1051,58 @@ std::string Renderer::vec3ToString(glm::vec3 v) {
 }
 
 MeshData Renderer::generateLSystem(glm::vec3 rotation) {
-    std::vector<std::string> variables{"F"};
-    std::vector<std::string> constants{"+", "-"};
-    std::map<std::string, std::string> productions{
-        {"F", "F+F--F+F"}, {"+", "+"}, {"-", "-"}};
-    std::string axiom = "F";
+    std::map<std::string, std::string> rules{
+        {"1", "11"}, {"0", "1[0]0"}, {"[", "["}, {"]", "]"}};
+    std::string axiom = "0";
     std::string result = axiom;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 10; i++) {
         std::string next = "";
 
         for (const auto &c : result) {
             std::string s{c};
-            next.append(productions[s]);
+            next.append(rules[s]);
         }
         result = next;
     }
 
-    glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.x),
-                                 glm::vec3(1, 0, 0));
-    glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.y),
-                                 glm::vec3(0, 1, 0));
-    glm::mat4 rotZ = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.z),
-                                 glm::vec3(0, 0, 1));
-    glm::mat4 rot = rotY * rotX * rotZ;
-    glm::mat4 rotInv = glm::transpose(rot);
-
     std::map<char, glm::mat4> transforms{
-        {'F', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
-        {'+', rot},
-        {'-', rotInv}};
+        {'0', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
+        {'1', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
+        {'[',
+         glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0, 0, 1))},
+        {']', glm::rotate(glm::mat4(1.0f), glm::radians(-45.0f),
+                          glm::vec3(0, 0, 1))},
+    };
 
     glm::mat4 currTransform = glm::mat4(1.0f);
     std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    uint32_t currentIndex = 0;
+
     vertices.push_back(Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}});
+    indices.push_back(currentIndex);
+
+    std::stack<glm::mat4> stack;
 
     for (const auto &c : result) {
+        if (c == '[') {
+            stack.push(currTransform);
+        }
+
+        if (c == ']') {
+            currTransform = stack.top();
+            stack.pop();
+            indices.push_back(0xFFFFFFFF);
+        }
+
         currTransform *= transforms[c];
         glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
         vertices.push_back(
             Vertex{.position = currPosition, .color = {1, 1, 1, 1}});
+
+        currentIndex++;
+        indices.push_back(currentIndex);
     }
 
     glm::vec3 avgPos{0};
@@ -1102,14 +1115,7 @@ MeshData Renderer::generateLSystem(glm::vec3 rotation) {
         v.position -= avgPos;
     }
 
-    std::vector<uint32_t> indices;
-    indices.resize(2 * vertices.size() - 2);
-    for (int i = 0; i < (2 * vertices.size() - 2); i++) {
-        indices[i] = (i + 1) / 2;
-    }
-
     MeshData meshData{.vertices = vertices, .indices = indices};
-
     return meshData;
 }
 } // namespace lsv
