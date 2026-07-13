@@ -72,7 +72,9 @@ private:
     VkExtent2D mainDrawExtent;
     VkDescriptorSet imguiDescriptorSet;
 
-    size_t frameTimeWindow = 10;
+    AllocatedBuffer stagingBuffer;
+
+    size_t frameTimeWindow = 500;
     std::deque<double> frameTimes;
 
     float cameraYaw = 0.0f;

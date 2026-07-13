@@ -134,6 +134,10 @@ void Renderer::init(RenderConfig config) {
     initFrameDatas();
     buildPipelines();
 
+    stagingBuffer = createBuffer(
+        sizeof(Vertex) * MAX_VERTEX_COUNT + sizeof(uint32_t) * MAX_VERTEX_COUNT,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
     std::array<Vertex, 6> axesVerts;
     axesVerts[0].position = {0, 0, 0};
     axesVerts[1].position = {0, 0, 0};
@@ -170,10 +174,9 @@ void Renderer::cleanup() {
     vkDeviceWaitIdle(device);
 
     destroyPipelines();
-
     destroyMesh(axes);
-
     destroyFrameDatas();
+    destroyBuffer(stagingBuffer);
 
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL2_Shutdown();
@@ -181,7 +184,6 @@ void Renderer::cleanup() {
     vkDestroyDescriptorPool(device, imguiDescriptorPool, nullptr);
 
     destroySwapchain();
-
     destroyDrawImage();
 
     vkDestroyFence(device, immediateCmdFence, nullptr);
@@ -202,10 +204,32 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
     FrameData &currentFrame = getCurrentFrame();
 
     generateLSystem(tmpAngle);
-    memcpy(currentFrame.vertexBuffer.allocationInfo.pMappedData,
-           vertices.data(), sizeof(Vertex) * vertexCount);
-    memcpy(currentFrame.indexBuffer.allocationInfo.pMappedData, indices.data(),
-           sizeof(uint32_t) * indexCount);
+
+    void *data = stagingBuffer.allocationInfo.pMappedData;
+
+    size_t vertexBufferSize = sizeof(Vertex) * vertexCount;
+    size_t indexBufferSize = sizeof(uint32_t) * indexCount;
+
+    memcpy(data, vertices.data(), vertexBufferSize);
+    memcpy((char *)data + vertexBufferSize, indices.data(), indexBufferSize);
+
+    immediateSubmit([&](VkCommandBuffer cmd) {
+        VkBufferCopy vertexCopy;
+        vertexCopy.srcOffset = 0;
+        vertexCopy.dstOffset = 0;
+        vertexCopy.size = vertexBufferSize;
+
+        vkCmdCopyBuffer(cmd, stagingBuffer.buffer,
+                        currentFrame.vertexBuffer.buffer, 1, &vertexCopy);
+
+        VkBufferCopy indexCopy;
+        indexCopy.srcOffset = vertexBufferSize;
+        indexCopy.dstOffset = 0;
+        indexCopy.size = indexBufferSize;
+
+        vkCmdCopyBuffer(cmd, stagingBuffer.buffer,
+                        currentFrame.indexBuffer.buffer, 1, &indexCopy);
+    });
 
     VK_CHECK(vkWaitForFences(device, 1, &currentFrame.renderFinishedFence, true,
                              1000000000));
@@ -767,14 +791,16 @@ void Renderer::initFrameDatas() {
         frames[i].vertexBuffer =
             createBuffer(sizeof(Vertex) * MAX_VERTEX_COUNT,
                          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                         VMA_MEMORY_USAGE_CPU_TO_GPU);
+                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                         VMA_MEMORY_USAGE_GPU_ONLY);
 
         frames[i].indexBuffer =
             createBuffer(sizeof(Vertex) * MAX_VERTEX_COUNT,
                          VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                         VMA_MEMORY_USAGE_CPU_TO_GPU);
+                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                         VMA_MEMORY_USAGE_GPU_ONLY);
 
         VkBufferDeviceAddressInfo addressInfo{
             .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
