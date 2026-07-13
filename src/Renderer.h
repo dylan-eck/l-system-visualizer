@@ -75,6 +75,7 @@ private:
     VkDescriptorSet imguiDescriptorSet;
 
     AllocatedBuffer stagingBuffer;
+    uint32_t stagingBufferGeneration = 0;
 
     size_t frameTimeWindow = 60;
     std::deque<double> frameTimes;
@@ -88,7 +89,8 @@ private:
 
     int lsIterationCount = 8;
     glm::vec3 tmpAngle{0.0f, 0.0f, 45.0f};
-    size_t vertexCapacity = 8192;
+    std::vector<Vertex> lsVertices;
+    std::vector<uint32_t> lsIndices;
     size_t vertexCount = 0;
     size_t indexCount = 0;
     int lsStringLength = 0;
@@ -130,6 +132,6 @@ private:
     void printMat4(glm::mat4 m);
     std::string vec3ToString(glm::vec3 v);
 
-    void generateLSystem(glm::vec3 rotation, void *buffer);
+    void generateLSystem(glm::vec3 rotation);
 };
 } // namespace lsv

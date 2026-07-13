@@ -135,8 +135,11 @@ void Renderer::init(RenderConfig config) {
     buildPipelines();
 
     stagingBuffer = createBuffer(
-        sizeof(Vertex) * vertexCapacity + sizeof(uint32_t) * vertexCapacity,
+        sizeof(Vertex) * 8192 + sizeof(uint32_t) * 1.5 * 8192,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
+    lsVertices.resize(8192);
+    lsIndices.resize(1.5 * 8192);
 
     std::array<Vertex, 6> axesVerts;
     axesVerts[0].position = {0, 0, 0};
@@ -205,9 +208,38 @@ void Renderer::cleanup() {
 void Renderer::draw(ImDrawData *imGuiDrawData) {
     FrameData &currentFrame = getCurrentFrame();
 
-    generateLSystem(tmpAngle, stagingBuffer.allocationInfo.pMappedData);
+    VK_CHECK(vkWaitForFences(device, 1, &currentFrame.renderFinishedFence, true,
+                             1000000000));
+    VK_CHECK(vkResetFences(device, 1, &currentFrame.renderFinishedFence));
 
-    void *data = stagingBuffer.allocationInfo.pMappedData;
+    if (currentFrame.bufferGeneration != stagingBufferGeneration) {
+        destroyBuffer(currentFrame.vertexBuffer);
+        destroyBuffer(currentFrame.indexBuffer);
+
+        currentFrame.vertexBuffer =
+            createBuffer(sizeof(Vertex) * vertexCount,
+                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                         VMA_MEMORY_USAGE_GPU_ONLY);
+
+        VkBufferDeviceAddressInfo addressInfo{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .buffer = currentFrame.vertexBuffer.buffer,
+        };
+
+        currentFrame.vertexBufferAddress =
+            vkGetBufferDeviceAddress(device, &addressInfo);
+
+        currentFrame.indexBuffer =
+            createBuffer(sizeof(uint32_t) * indexCount,
+                         VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                         VMA_MEMORY_USAGE_GPU_ONLY);
+
+        currentFrame.bufferGeneration = stagingBufferGeneration;
+    }
 
     size_t vertexBufferSize = sizeof(Vertex) * vertexCount;
     size_t indexBufferSize = sizeof(uint32_t) * indexCount;
@@ -222,17 +254,13 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
                         currentFrame.vertexBuffer.buffer, 1, &vertexCopy);
 
         VkBufferCopy indexCopy;
-        indexCopy.srcOffset = sizeof(Vertex) * vertexCapacity;
+        indexCopy.srcOffset = sizeof(Vertex) * vertexCount;
         indexCopy.dstOffset = 0;
         indexCopy.size = indexBufferSize;
 
         vkCmdCopyBuffer(cmd, stagingBuffer.buffer,
                         currentFrame.indexBuffer.buffer, 1, &indexCopy);
     });
-
-    VK_CHECK(vkWaitForFences(device, 1, &currentFrame.renderFinishedFence, true,
-                             1000000000));
-    VK_CHECK(vkResetFences(device, 1, &currentFrame.renderFinishedFence));
 
     uint32_t swapchainImageIndex;
     VkResult acquireResult = vkAcquireNextImageKHR(
@@ -457,7 +485,21 @@ void Renderer::run() {
             swapchainStale = true;
         }
 
-        ImGui::DragInt("iterations: ", &lsIterationCount);
+        ImGui::Text("iterations: ");
+        ImGui::SameLine();
+        bool decPressed = ImGui::Button("<");
+        if (decPressed) {
+            lsIterationCount--;
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(100.0f);
+        ImGui::DragInt("##lsIterationCount", &lsIterationCount);
+        ImGui::SameLine();
+        bool incPressed = ImGui::Button(">");
+        if (incPressed) {
+            lsIterationCount++;
+        }
+
         ImGui::Text("cpu frame time: %2.2f ms (%4.0f fps)", avgFrameTime,
                     1000 / avgFrameTime);
         ImGui::Text("L-system string length: %d", lsStringLength);
@@ -508,6 +550,25 @@ void Renderer::run() {
 
         ImGui::Render();
         ImDrawData *drawData = ImGui::GetDrawData();
+
+        generateLSystem(tmpAngle);
+
+        size_t lsSize =
+            sizeof(Vertex) * vertexCount + sizeof(uint32_t) * indexCount;
+        size_t stagingBufferSize = stagingBuffer.allocationInfo.size;
+        if (lsSize > stagingBufferSize) {
+            destroyBuffer(stagingBuffer);
+            stagingBuffer = createBuffer(2 * stagingBufferSize,
+                                         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                         VMA_MEMORY_USAGE_CPU_ONLY);
+            stagingBufferGeneration++;
+        }
+
+        void *data = stagingBuffer.allocationInfo.pMappedData;
+
+        memcpy(data, lsVertices.data(), sizeof(Vertex) * vertexCount);
+        memcpy((char *)data + sizeof(Vertex) * vertexCount, lsIndices.data(),
+               sizeof(uint32_t) * indexCount);
 
         draw(drawData);
     }
@@ -797,14 +858,14 @@ void Renderer::initFrameDatas() {
                                &frames[i].renderFinishedFence));
 
         frames[i].vertexBuffer =
-            createBuffer(sizeof(Vertex) * vertexCapacity,
+            createBuffer(sizeof(Vertex) * 8192,
                          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                              VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                          VMA_MEMORY_USAGE_GPU_ONLY);
 
         frames[i].indexBuffer =
-            createBuffer(sizeof(Vertex) * vertexCapacity,
+            createBuffer(sizeof(uint32_t) * 1.5 * 8192,
                          VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                              VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -971,14 +1032,6 @@ void Renderer::buildPipelines() {
         throw std::runtime_error("failed to build line pipeline");
     }
 
-    pipelineBuilder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-
-    // meshPipeline = pipelineBuilder.build(device);
-
-    // if (meshPipeline == VK_NULL_HANDLE) {
-    //     throw std::runtime_error("failed to build mesh pipeline");
-    // }
-
     vkDestroyShaderModule(device, shaderModule, nullptr);
 }
 
@@ -1088,7 +1141,7 @@ std::string Renderer::vec3ToString(glm::vec3 v) {
     return fmt::format("{: .2f} {: .2f} {: .2f}", v[0], v[1], v[2]);
 }
 
-void Renderer::generateLSystem(glm::vec3 rotation, void *buffer) {
+void Renderer::generateLSystem(glm::vec3 rotation) {
     std::map<std::string, std::string> rules{{"1", "11"}, {"0", "1[0]0"}};
     std::string axiom = "0";
     std::string result = axiom;
@@ -1111,6 +1164,11 @@ void Renderer::generateLSystem(glm::vec3 rotation, void *buffer) {
 
     lsStringLength = result.length();
 
+    if (lsStringLength > lsVertices.size()) {
+        lsVertices.resize(lsStringLength);
+        lsIndices.resize(1.5 * lsStringLength);
+    }
+
     glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.x),
                                  glm::vec3(1, 0, 0));
     glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.y),
@@ -1127,19 +1185,15 @@ void Renderer::generateLSystem(glm::vec3 rotation, void *buffer) {
         {']', rotInv},
     };
 
-    Vertex *vertexBuffer = (Vertex *)buffer;
-    uint32_t *indexBuffer =
-        (uint32_t *)((char *)buffer + sizeof(Vertex) * vertexCapacity);
-
     glm::mat4 currTransform = glm::mat4(1.0f);
     vertexCount = 0;
     indexCount = 0;
     size_t i = 0;
 
-    vertexBuffer[vertexCount++] =
+    lsVertices[vertexCount++] =
         Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}};
 
-    indexBuffer[i++] = indexCount;
+    lsIndices[i++] = indexCount;
 
     std::stack<glm::mat4> stack;
 
@@ -1151,18 +1205,18 @@ void Renderer::generateLSystem(glm::vec3 rotation, void *buffer) {
         if (c == ']') {
             currTransform = stack.top();
             stack.pop();
-            indexBuffer[i++] = 0xFFFFFFFF;
+            lsIndices[i++] = 0xFFFFFFFF;
         }
 
         currTransform *= transforms[c];
         glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
 
-        if (currPosition != vertexBuffer[vertexCount - 1].position) {
-            vertexBuffer[vertexCount++] =
+        if (currPosition != lsVertices[vertexCount - 1].position) {
+            lsVertices[vertexCount++] =
                 Vertex{.position = currPosition, .color = {1, 1, 1, 1}};
 
             indexCount++;
-            indexBuffer[i++] = indexCount;
+            lsIndices[i++] = indexCount;
         }
     }
 
@@ -1170,12 +1224,12 @@ void Renderer::generateLSystem(glm::vec3 rotation, void *buffer) {
 
     glm::vec3 avgPos{0};
     for (int i = 0; i < vertexCount; i++) {
-        avgPos += vertexBuffer[i].position;
+        avgPos += lsVertices[i].position;
     }
     avgPos /= vertexCount;
 
     for (int i = 0; i < vertexCount; i++) {
-        vertexBuffer[i].position -= avgPos;
+        lsVertices[i].position -= avgPos;
     }
 }
 } // namespace lsv

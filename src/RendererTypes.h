@@ -47,6 +47,7 @@ struct FrameData {
     AllocatedBuffer vertexBuffer;
     VkDeviceAddress vertexBufferAddress;
     AllocatedBuffer indexBuffer;
+    uint32_t bufferGeneration = 0;
 };
 
 struct MeshData {
