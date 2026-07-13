@@ -153,13 +153,15 @@ void Renderer::init(RenderConfig config) {
     axesVerts[4].color = {0, 1, 0, 1};
     axesVerts[5].color = {0, 0, 1, 1};
 
-    std::array<uint32_t, 6> axesIdxs;
+    std::array<uint32_t, 8> axesIdxs;
     axesIdxs[0] = 0;
     axesIdxs[1] = 3;
-    axesIdxs[2] = 1;
-    axesIdxs[3] = 4;
-    axesIdxs[4] = 2;
-    axesIdxs[5] = 5;
+    axesIdxs[2] = 0xFFFFFFFF;
+    axesIdxs[3] = 1;
+    axesIdxs[4] = 4;
+    axesIdxs[5] = 0xFFFFFFFF;
+    axesIdxs[6] = 2;
+    axesIdxs[7] = 5;
 
     axes = uploadMesh(axesVerts, axesIdxs);
 
@@ -316,7 +318,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
                        sizeof(GPUDrawPushConstants), &pushConstants);
     vkCmdBindIndexBuffer(cmd, axes.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, linePipeline);
-    vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, 8, 1, 0, 0, 0);
 
     // draw l-system
     pushConstants = {
