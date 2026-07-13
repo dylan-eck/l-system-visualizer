@@ -88,7 +88,7 @@ private:
 
     int lsIterationCount = 8;
     glm::vec3 tmpAngle{0.0f, 0.0f, 45.0f};
-    static constexpr size_t MAX_VERTEX_COUNT = 8192;
+    size_t vertexCapacity = 8192;
     size_t vertexCount = 0;
     size_t indexCount = 0;
     int lsStringLength = 0;

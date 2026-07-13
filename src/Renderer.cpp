@@ -135,7 +135,7 @@ void Renderer::init(RenderConfig config) {
     buildPipelines();
 
     stagingBuffer = createBuffer(
-        sizeof(Vertex) * MAX_VERTEX_COUNT + sizeof(uint32_t) * MAX_VERTEX_COUNT,
+        sizeof(Vertex) * vertexCapacity + sizeof(uint32_t) * vertexCapacity,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     std::array<Vertex, 6> axesVerts;
@@ -222,7 +222,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
                         currentFrame.vertexBuffer.buffer, 1, &vertexCopy);
 
         VkBufferCopy indexCopy;
-        indexCopy.srcOffset = sizeof(Vertex) * MAX_VERTEX_COUNT;
+        indexCopy.srcOffset = sizeof(Vertex) * vertexCapacity;
         indexCopy.dstOffset = 0;
         indexCopy.size = indexBufferSize;
 
@@ -797,14 +797,14 @@ void Renderer::initFrameDatas() {
                                &frames[i].renderFinishedFence));
 
         frames[i].vertexBuffer =
-            createBuffer(sizeof(Vertex) * MAX_VERTEX_COUNT,
+            createBuffer(sizeof(Vertex) * vertexCapacity,
                          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                              VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                          VMA_MEMORY_USAGE_GPU_ONLY);
 
         frames[i].indexBuffer =
-            createBuffer(sizeof(Vertex) * MAX_VERTEX_COUNT,
+            createBuffer(sizeof(Vertex) * vertexCapacity,
                          VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                              VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -1129,7 +1129,7 @@ void Renderer::generateLSystem(glm::vec3 rotation, void *buffer) {
 
     Vertex *vertexBuffer = (Vertex *)buffer;
     uint32_t *indexBuffer =
-        (uint32_t *)((char *)buffer + sizeof(Vertex) * MAX_VERTEX_COUNT);
+        (uint32_t *)((char *)buffer + sizeof(Vertex) * vertexCapacity);
 
     glm::mat4 currTransform = glm::mat4(1.0f);
     vertexCount = 0;
@@ -1157,11 +1157,13 @@ void Renderer::generateLSystem(glm::vec3 rotation, void *buffer) {
         currTransform *= transforms[c];
         glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
 
-        vertexBuffer[vertexCount++] =
-            Vertex{.position = currPosition, .color = {1, 1, 1, 1}};
+        if (currPosition != vertexBuffer[vertexCount - 1].position) {
+            vertexBuffer[vertexCount++] =
+                Vertex{.position = currPosition, .color = {1, 1, 1, 1}};
 
-        indexCount++;
-        indexBuffer[i++] = indexCount;
+            indexCount++;
+            indexBuffer[i++] = indexCount;
+        }
     }
 
     indexCount = i;
