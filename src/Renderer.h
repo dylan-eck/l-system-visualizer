@@ -89,8 +89,6 @@ private:
     int lsIterationCount = 8;
     glm::vec3 tmpAngle{0.0f, 0.0f, 45.0f};
     static constexpr size_t MAX_VERTEX_COUNT = 8192;
-    std::array<Vertex, MAX_VERTEX_COUNT> vertices;
-    std::array<uint32_t, MAX_VERTEX_COUNT> indices;
     size_t vertexCount = 0;
     size_t indexCount = 0;
     int lsStringLength = 0;
@@ -132,6 +130,6 @@ private:
     void printMat4(glm::mat4 m);
     std::string vec3ToString(glm::vec3 v);
 
-    void generateLSystem(glm::vec3 rotation);
+    void generateLSystem(glm::vec3 rotation, void *buffer);
 };
 } // namespace lsv

@@ -205,15 +205,12 @@ void Renderer::cleanup() {
 void Renderer::draw(ImDrawData *imGuiDrawData) {
     FrameData &currentFrame = getCurrentFrame();
 
-    generateLSystem(tmpAngle);
+    generateLSystem(tmpAngle, stagingBuffer.allocationInfo.pMappedData);
 
     void *data = stagingBuffer.allocationInfo.pMappedData;
 
     size_t vertexBufferSize = sizeof(Vertex) * vertexCount;
     size_t indexBufferSize = sizeof(uint32_t) * indexCount;
-
-    memcpy(data, vertices.data(), vertexBufferSize);
-    memcpy((char *)data + vertexBufferSize, indices.data(), indexBufferSize);
 
     immediateSubmit([&](VkCommandBuffer cmd) {
         VkBufferCopy vertexCopy;
@@ -225,7 +222,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
                         currentFrame.vertexBuffer.buffer, 1, &vertexCopy);
 
         VkBufferCopy indexCopy;
-        indexCopy.srcOffset = vertexBufferSize;
+        indexCopy.srcOffset = sizeof(Vertex) * MAX_VERTEX_COUNT;
         indexCopy.dstOffset = 0;
         indexCopy.size = indexBufferSize;
 
@@ -1091,7 +1088,7 @@ std::string Renderer::vec3ToString(glm::vec3 v) {
     return fmt::format("{: .2f} {: .2f} {: .2f}", v[0], v[1], v[2]);
 }
 
-void Renderer::generateLSystem(glm::vec3 rotation) {
+void Renderer::generateLSystem(glm::vec3 rotation, void *buffer) {
     std::map<std::string, std::string> rules{{"1", "11"}, {"0", "1[0]0"}};
     std::string axiom = "0";
     std::string result = axiom;
@@ -1130,15 +1127,19 @@ void Renderer::generateLSystem(glm::vec3 rotation) {
         {']', rotInv},
     };
 
+    Vertex *vertexBuffer = (Vertex *)buffer;
+    uint32_t *indexBuffer =
+        (uint32_t *)((char *)buffer + sizeof(Vertex) * MAX_VERTEX_COUNT);
+
     glm::mat4 currTransform = glm::mat4(1.0f);
     vertexCount = 0;
     indexCount = 0;
     size_t i = 0;
 
-    vertices[vertexCount++] =
+    vertexBuffer[vertexCount++] =
         Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}};
 
-    indices[i++] = indexCount;
+    indexBuffer[i++] = indexCount;
 
     std::stack<glm::mat4> stack;
 
@@ -1150,29 +1151,29 @@ void Renderer::generateLSystem(glm::vec3 rotation) {
         if (c == ']') {
             currTransform = stack.top();
             stack.pop();
-            indices[i++] = 0xFFFFFFFF;
+            indexBuffer[i++] = 0xFFFFFFFF;
         }
 
         currTransform *= transforms[c];
         glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
 
-        vertices[vertexCount++] =
+        vertexBuffer[vertexCount++] =
             Vertex{.position = currPosition, .color = {1, 1, 1, 1}};
 
         indexCount++;
-        indices[i++] = indexCount;
+        indexBuffer[i++] = indexCount;
     }
 
     indexCount = i;
 
     glm::vec3 avgPos{0};
     for (int i = 0; i < vertexCount; i++) {
-        avgPos += vertices[i].position;
+        avgPos += vertexBuffer[i].position;
     }
     avgPos /= vertexCount;
 
     for (int i = 0; i < vertexCount; i++) {
-        vertices[i].position -= avgPos;
+        vertexBuffer[i].position -= avgPos;
     }
 }
 } // namespace lsv
