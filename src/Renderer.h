@@ -52,10 +52,12 @@ private:
     VkSwapchainKHR swapchain;
     VkExtent2D swapchainExtent;
     VkFormat swapchainFormat;
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
     std::vector<VkImage> swapchainImages;
     std::vector<VkImageView> swapchainImageViews;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     bool swapchainStale = false;
+    bool vsyncEnabled = true;
 
     FrameData frames[FRAMES_IN_FLIGHT];
     FrameData &getCurrentFrame() {
@@ -74,7 +76,7 @@ private:
 
     AllocatedBuffer stagingBuffer;
 
-    size_t frameTimeWindow = 500;
+    size_t frameTimeWindow = 60;
     std::deque<double> frameTimes;
 
     float cameraYaw = 0.0f;

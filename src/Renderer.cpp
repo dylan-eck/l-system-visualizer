@@ -449,6 +449,15 @@ void Renderer::run() {
         ImGui::DockSpaceOverViewport(dockspaceID, nullptr, dockspaceFlags);
 
         ImGui::Begin("info");
+        static bool prevVsyncEnabled = vsyncEnabled;
+        ImGui::Checkbox("v-sync", &vsyncEnabled);
+        if (vsyncEnabled != prevVsyncEnabled) {
+            prevVsyncEnabled = vsyncEnabled;
+            presentMode = vsyncEnabled ? VK_PRESENT_MODE_FIFO_KHR
+                                       : VK_PRESENT_MODE_IMMEDIATE_KHR;
+            swapchainStale = true;
+        }
+
         ImGui::DragInt("iterations: ", &lsIterationCount);
         ImGui::Text("cpu frame time: %2.2f ms (%4.0f fps)", avgFrameTime,
                     1000 / avgFrameTime);
@@ -706,7 +715,7 @@ void Renderer::createSwapchain(uint32_t width, uint32_t height) {
             .set_desired_format(VkSurfaceFormatKHR{
                 .format = swapchainFormat,
                 .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
-            .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+            .set_desired_present_mode(presentMode)
             .set_desired_extent(width, height)
             .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
             .build()
