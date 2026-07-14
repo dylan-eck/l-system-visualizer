@@ -11,6 +11,7 @@
 #include <imgui.h>
 
 #include "RendererTypes.h"
+#include "LSystem.h"
 
 namespace lsv {
 constexpr unsigned int FRAMES_IN_FLIGHT = 2;
@@ -94,6 +95,8 @@ private:
     size_t vertexCount = 0;
     size_t indexCount = 0;
     int lsStringLength = 0;
+
+    LSystem lSystem;
 
     void initImmediateCommands();
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);

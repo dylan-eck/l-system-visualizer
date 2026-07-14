@@ -66,4 +66,8 @@ struct GPUDrawPushConstants {
     VkDeviceAddress vertexBuffer;
 };
 
+struct Transformation {
+    glm::vec3 translate = glm::vec3(0);
+    glm::vec3 rotate = glm::vec3(0);
+};
 } // namespace lsv

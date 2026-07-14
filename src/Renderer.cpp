@@ -15,6 +15,7 @@
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_vulkan.h>
 #include <imgui_internal.h>
+#include <imgui_stdlib.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <VkBootstrap.h>
@@ -167,6 +168,26 @@ void Renderer::init(RenderConfig config) {
     axesIdxs[7] = 5;
 
     axes = uploadMesh(axesVerts, axesIdxs);
+
+    lSystem.addVariable("0", Transformation{
+                                 .translate = glm::vec3(0.01, 0, 0),
+                                 .rotate = glm::vec3(0, 0, 0),
+                             });
+    lSystem.addVariable("1", Transformation{
+                                 .translate = glm::vec3(0.01, 0, 0),
+                                 .rotate = glm::vec3(0, 0, 0),
+                             });
+    lSystem.addVariable("[", Transformation{
+                                 .translate = glm::vec3(0, 0, 0),
+                                 .rotate = glm::vec3(0, 0, 45),
+                             });
+    lSystem.addVariable("]", Transformation{
+                                 .translate = glm::vec3(0, 0, 0),
+                                 .rotate = glm::vec3(0, 0, -45),
+                             });
+
+    lSystem.addRule("1", "11");
+    lSystem.addRule("0", "1[0]0");
 
     isInitialized = true;
 }
@@ -467,7 +488,7 @@ void Renderer::run() {
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        // ImGui::ShowDemoWindow();
+        ImGui::ShowDemoWindow();
 
         ImGuiID dockspaceID = ImGui::GetID("MainDockSpace");
         ImGuiDockNodeFlags dockspaceFlags =
@@ -476,6 +497,8 @@ void Renderer::run() {
         ImGui::DockSpaceOverViewport(dockspaceID, nullptr, dockspaceFlags);
 
         ImGui::Begin("info");
+        float width = ImGui::GetContentRegionAvail().x;
+
         static bool prevVsyncEnabled = vsyncEnabled;
         ImGui::Checkbox("v-sync", &vsyncEnabled);
         if (vsyncEnabled != prevVsyncEnabled) {
@@ -492,7 +515,7 @@ void Renderer::run() {
             lsIterationCount--;
         }
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(100.0f);
+        // ImGui::SetNextItemWidth(100.0f);
         ImGui::DragInt("##lsIterationCount", &lsIterationCount);
         ImGui::SameLine();
         bool incPressed = ImGui::Button(">");
@@ -509,6 +532,151 @@ void Renderer::run() {
         ImGui::DragFloat("x angle", &tmpAngle.x);
         ImGui::DragFloat("y angle", &tmpAngle.y);
         ImGui::DragFloat("z angle", &tmpAngle.z);
+
+        if (lSystem.stringStale || lSystem.vertsStale) {
+            std::cout << "### l-system updated ###" << std::endl;
+
+            for (auto &[var, trans] : lSystem.variables) {
+                std::cout << "    " << var << ":" << std::endl;
+                std::cout << "        " << vec3ToString(trans.translate)
+                          << std::endl;
+                std::cout << "        " << vec3ToString(trans.rotate)
+                          << std::endl
+                          << std::endl;
+            }
+            std::cout << std::endl;
+
+            std::cout << "rules:" << std::endl;
+            for (auto &[left, right] : lSystem.rules) {
+                std::cout << "    " << left << " -> " << right << std::endl;
+            }
+            std::cout << std::endl;
+
+            lSystem.stringStale = false;
+            lSystem.vertsStale = false;
+        }
+
+        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(2.0f, 2.0f));
+        // VARIABLES INPUTS ----------------------------------------------
+        ImGui::Text("variables:");
+        if (ImGui::BeginTable("vars-table", 4,
+                              ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("var", ImGuiTableColumnFlags_WidthFixed,
+                                    30.0f);
+            ImGui::TableSetupColumn("x", ImGuiTableColumnFlags_WidthStretch,
+                                    0.3f);
+            ImGui::TableSetupColumn("y", ImGuiTableColumnFlags_WidthStretch,
+                                    0.3f);
+            ImGui::TableSetupColumn("z", ImGuiTableColumnFlags_WidthStretch,
+                                    0.3f);
+
+            for (int i = 0; i < lSystem.variables.size(); i++) {
+                auto &[var, transformation] = lSystem.variables[i];
+
+                ImGui::TableNextRow();
+
+                ImGui::TableSetColumnIndex(0);
+                ImGui::InputText(fmt::format("##var-{}", i).c_str(), &var);
+                lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
+
+                ImGui::TableSetColumnIndex(1);
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputFloat(fmt::format("##tx-{}", i).c_str(),
+                                  &transformation.translate.x);
+                lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
+
+                ImGui::TableSetColumnIndex(2);
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputFloat(fmt::format("##ty-{}", i).c_str(),
+                                  &transformation.translate.y);
+                lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
+
+                ImGui::TableSetColumnIndex(3);
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputFloat(fmt::format("##tz-{}", i).c_str(),
+                                  &transformation.translate.z);
+                lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
+
+                ImGui::TableNextRow();
+
+                ImGui::TableSetColumnIndex(1);
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputFloat(fmt::format("##rx-{}", i).c_str(),
+                                  &transformation.rotate.x);
+                lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
+
+                ImGui::TableSetColumnIndex(2);
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputFloat(fmt::format("##ry-{}", i).c_str(),
+                                  &transformation.rotate.y);
+                lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
+
+                ImGui::TableSetColumnIndex(3);
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputFloat(fmt::format("##rz-{}", i).c_str(),
+                                  &transformation.rotate.z);
+                lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
+
+                ImGui::TableNextRow();
+            }
+
+            ImGui::EndTable();
+        }
+        if (ImGui::Button("+##add-var", ImVec2(width, 0.0f))) {
+            lSystem.variables.push_back(LSVariable());
+        }
+
+        // RULES INPUTS --------------------------------------------------------
+        ImGui::Text("rules:");
+        int removeIndex = -1;
+        if (ImGui::BeginTable("rules-table", 4,
+                              ImGuiTableFlags_SizingStretchProp)) {
+
+            ImGui::TableSetupColumn("left", ImGuiTableColumnFlags_WidthFixed,
+                                    30.0f);
+            ImGui::TableSetupColumn("arrow", ImGuiTableColumnFlags_WidthFixed,
+                                    16.0f);
+            ImGui::TableSetupColumn("right", ImGuiTableColumnFlags_WidthStretch,
+                                    0.4f);
+            ImGui::TableSetupColumn("remove", ImGuiTableColumnFlags_WidthFixed,
+                                    20.0f);
+
+            for (size_t i = 0; i < lSystem.rules.size(); i++) {
+                auto &[left, right] = lSystem.rules[i];
+                std::string idStr = fmt::format("{}", i);
+
+                ImGui::TableNextRow();
+
+                ImGui::TableSetColumnIndex(0);
+                ImGui::InputText(("##" + idStr + "-l").c_str(), &left);
+                lSystem.stringStale |= ImGui::IsItemDeactivatedAfterEdit();
+
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("->");
+
+                ImGui::TableSetColumnIndex(2);
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputText(("##" + idStr + "-r").c_str(), &right);
+                lSystem.stringStale |= ImGui::IsItemDeactivatedAfterEdit();
+
+                ImGui::TableSetColumnIndex(3);
+                if (ImGui::Button(("-##" + idStr + "-b").c_str(),
+                                  ImVec2(-FLT_MIN, 0.0f))) {
+                    SPDLOG_DEBUG("remove rule {}", idStr);
+                    removeIndex = static_cast<int>(i);
+                }
+            }
+
+            ImGui::EndTable();
+        }
+        ImGui::PopStyleVar();
+        if (removeIndex != -1) {
+            lSystem.rules.erase(lSystem.rules.begin() + removeIndex);
+        }
+        if (ImGui::Button("+##add-rule", ImVec2(width, 0.0f))) {
+            lSystem.rules.push_back(LSRule());
+        }
+
         ImGui::End();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -1142,7 +1310,22 @@ std::string Renderer::vec3ToString(glm::vec3 v) {
 }
 
 void Renderer::generateLSystem(glm::vec3 rotation) {
-    std::map<std::string, std::string> rules{{"1", "11"}, {"0", "1[0]0"}};
+    glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.x),
+                                 glm::vec3(1, 0, 0));
+    glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.y),
+                                 glm::vec3(0, 1, 0));
+    glm::mat4 rotZ = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.z),
+                                 glm::vec3(0, 0, 1));
+    glm::mat4 rot = rotY * rotX * rotZ;
+    glm::mat4 rotInv = glm::transpose(rot);
+
+    std::map<char, glm::mat4> variables{
+        {'0', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
+        {'1', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
+        {'[', rot},
+        {']', rotInv},
+    };
+    std::map<char, std::string> rules{{'1', "11"}, {'0', "1[0]0"}};
     std::string axiom = "0";
     std::string result = axiom;
 
@@ -1150,13 +1333,12 @@ void Renderer::generateLSystem(glm::vec3 rotation) {
         std::string next = "";
 
         for (const auto &c : result) {
-            std::string s{c};
-            auto it = rules.find(s);
+            auto it = rules.find(c);
 
             if (it != rules.end()) {
-                next.append(rules[s]);
+                next += rules[c];
             } else {
-                next.append(s);
+                next += c;
             }
         }
         result = next;
@@ -1168,22 +1350,6 @@ void Renderer::generateLSystem(glm::vec3 rotation) {
         lsVertices.resize(lsStringLength);
         lsIndices.resize(1.5 * lsStringLength);
     }
-
-    glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.x),
-                                 glm::vec3(1, 0, 0));
-    glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.y),
-                                 glm::vec3(0, 1, 0));
-    glm::mat4 rotZ = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.z),
-                                 glm::vec3(0, 0, 1));
-    glm::mat4 rot = rotY * rotX * rotZ;
-    glm::mat4 rotInv = glm::transpose(rot);
-
-    std::map<char, glm::mat4> transforms{
-        {'0', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
-        {'1', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
-        {'[', rot},
-        {']', rotInv},
-    };
 
     glm::mat4 currTransform = glm::mat4(1.0f);
     vertexCount = 0;
@@ -1208,7 +1374,7 @@ void Renderer::generateLSystem(glm::vec3 rotation) {
             lsIndices[i++] = 0xFFFFFFFF;
         }
 
-        currTransform *= transforms[c];
+        currTransform *= variables[c];
         glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
 
         if (currPosition != lsVertices[vertexCount - 1].position) {

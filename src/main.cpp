@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
 #endif
     auto exe_path = std::filesystem::canonical(argv[0]).parent_path();
-    SPDLOG_DEBUG("exe path: {}\n", exe_path.c_str());
+    SPDLOG_DEBUG("exe path: {}", exe_path.c_str());
 
     auto renderer = lsv::Renderer();
     lsv::RenderConfig config{.applicationName = "L System Visualizer",
