@@ -671,54 +671,40 @@ ImDrawData *Renderer::updateGui() {
         ImGui::TableSetupColumn("y", ImGuiTableColumnFlags_WidthStretch, 0.3f);
         ImGui::TableSetupColumn("z", ImGuiTableColumnFlags_WidthStretch, 0.3f);
 
+        auto floatInput = [](int colIdx, const char *id, float &val,
+                             bool &updated) {
+            ImGui::TableSetColumnIndex(colIdx);
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            if (ImGui::DragFloat(id, &val) &&
+                !ImGui::TempInputIsActive(ImGui::GetItemID())) {
+                updated = true;
+            }
+            updated |= ImGui::IsItemDeactivatedAfterEdit();
+        };
+
         for (int i = 0; i < lSystem.variables.size(); i++) {
-            auto &[var, transformation] = lSystem.variables[i];
+            auto &[var, transform] = lSystem.variables[i];
+            ImGui::PushID(i);
 
             ImGui::TableNextRow();
-
             ImGui::TableSetColumnIndex(0);
-            ImGui::InputText(fmt::format("##var-{}", i).c_str(), &var);
+
+            ImGui::InputText("##var", &var);
             lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
 
-            ImGui::TableSetColumnIndex(1);
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            ImGui::InputFloat(fmt::format("##tx-{}", i).c_str(),
-                              &transformation.translate.x);
-            lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
-
-            ImGui::TableSetColumnIndex(2);
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            ImGui::InputFloat(fmt::format("##ty-{}", i).c_str(),
-                              &transformation.translate.y);
-            lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
-
-            ImGui::TableSetColumnIndex(3);
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            ImGui::InputFloat(fmt::format("##tz-{}", i).c_str(),
-                              &transformation.translate.z);
-            lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
+            floatInput(1, "##tx", transform.translate.x, lSystem.vertsStale);
+            floatInput(2, "##ty", transform.translate.y, lSystem.vertsStale);
+            floatInput(3, "##tz", transform.translate.z, lSystem.vertsStale);
 
             ImGui::TableNextRow();
 
-            ImGui::TableSetColumnIndex(1);
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            ImGui::InputFloat(fmt::format("##rx-{}", i).c_str(),
-                              &transformation.rotate.x);
-            lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
-
-            ImGui::TableSetColumnIndex(2);
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            ImGui::InputFloat(fmt::format("##ry-{}", i).c_str(),
-                              &transformation.rotate.y);
-            lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
-
-            ImGui::TableSetColumnIndex(3);
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            ImGui::InputFloat(fmt::format("##rz-{}", i).c_str(),
-                              &transformation.rotate.z);
-            lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
+            floatInput(1, "##rx", transform.rotate.x, lSystem.vertsStale);
+            floatInput(2, "##ry", transform.rotate.y, lSystem.vertsStale);
+            floatInput(3, "##rz", transform.rotate.z, lSystem.vertsStale);
 
             ImGui::TableNextRow();
+
+            ImGui::PopID();
         }
 
         ImGui::EndTable();
