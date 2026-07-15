@@ -169,11 +169,11 @@ void Renderer::init(RenderConfig config) {
     lSystem.iterationCount = 8;
 
     lSystem.addVariable("0", Transformation{
-                                 .translate = glm::vec3(0.01, 0, 0),
+                                 .translate = glm::vec3(0, 0.01, 0),
                                  .rotate = glm::vec3(0, 0, 0),
                              });
     lSystem.addVariable("1", Transformation{
-                                 .translate = glm::vec3(0.01, 0, 0),
+                                 .translate = glm::vec3(0, 0.01, 0),
                                  .rotate = glm::vec3(0, 0, 0),
                              });
     lSystem.addVariable("[", Transformation{
@@ -187,7 +187,7 @@ void Renderer::init(RenderConfig config) {
 
     lSystem.addRule("1", "11");
     lSystem.addRule("0", "1[0]0");
-    lSystem.generate();
+    // lSystem.generate();
 
     isInitialized = true;
 }
@@ -484,6 +484,8 @@ void Renderer::run() {
             rebuildSwapchain();
         }
 
+        ImDrawData *drawData = updateGui();
+
         if (lSystem.stringStale || lSystem.vertsStale) {
             lSystem.generate();
         }
@@ -506,7 +508,6 @@ void Renderer::run() {
         memcpy((char *)data + sizeof(Vertex) * lSystem.vertexCount,
                lSystem.indices.data(), sizeof(uint32_t) * lSystem.indexCount);
 
-        ImDrawData *drawData = updateGui();
         draw(drawData);
     }
 }

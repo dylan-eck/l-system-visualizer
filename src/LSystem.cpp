@@ -94,16 +94,6 @@ void LSystem::generate() {
 
     indexCount = i;
 
-    glm::vec3 avgPos{0};
-    for (const auto &v : vertices) {
-        avgPos += v.position;
-    }
-    avgPos /= vertices.size();
-
-    for (auto &v : vertices) {
-        v.position -= avgPos;
-    }
-
     stringStale = false;
     vertsStale = false;
 }

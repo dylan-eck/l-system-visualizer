@@ -32,8 +32,8 @@ public:
     int iterationCount;
 
     std::string result;
-    int vertexCount;
-    int indexCount;
+    int vertexCount = 0;
+    int indexCount = 0;
     std::vector<Vertex> vertices = std::vector<Vertex>(8192);
     std::vector<uint32_t> indices = std::vector<uint32_t>(8192);
     std::stack<glm::mat4> stack;
