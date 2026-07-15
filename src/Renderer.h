@@ -88,9 +88,6 @@ private:
 
     GPUMesh axes;
 
-    int lsIterationCount = 8;
-    glm::vec3 tmpAngle{0.0f, 0.0f, 45.0f};
-
     LSystem lSystem;
 
     void initImmediateCommands();

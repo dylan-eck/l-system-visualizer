@@ -166,6 +166,7 @@ void Renderer::init(RenderConfig config) {
     axes = uploadMesh(axesVerts, axesIdxs);
 
     lSystem.axiom = "0";
+    lSystem.iterationCount = 8;
 
     lSystem.addVariable("0", Transformation{
                                  .translate = glm::vec3(0.01, 0, 0),
@@ -485,8 +486,6 @@ void Renderer::run() {
 
         if (lSystem.stringStale || lSystem.vertsStale) {
             lSystem.generate();
-            SPDLOG_DEBUG("l-system updated: vcount: {} icount: {}",
-                         lSystem.vertices.size(), lSystem.indices.size());
         }
 
         size_t lsSize = sizeof(Vertex) * lSystem.vertices.size() +
@@ -652,14 +651,10 @@ ImDrawData *Renderer::updateGui() {
     ImGui::Text("vertex count: %d", lSystem.vertexCount);
     ImGui::Text("index count (with restarts): %d", lSystem.indexCount);
 
-    ImGui::DragFloat("x angle", &tmpAngle.x);
-    ImGui::DragFloat("y angle", &tmpAngle.y);
-    ImGui::DragFloat("z angle", &tmpAngle.z);
-
     ImGui::Text("iterations: ");
     ImGui::SameLine();
-    ImGui::InputInt("##lsIterationCount", &lsIterationCount);
-    lSystem.iterationCount = lsIterationCount;
+    ImGui::InputInt("##lsIterationCount", &lSystem.iterationCount);
+    lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
 
     ImGui::Text("axiom:");
     ImGui::SameLine();
