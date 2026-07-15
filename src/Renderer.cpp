@@ -28,7 +28,6 @@
 #include "Renderer.h"
 #include "PipelineBuilder.h"
 
-#include <map>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
 
@@ -139,9 +138,6 @@ void Renderer::init(RenderConfig config) {
         sizeof(Vertex) * 8192 + sizeof(uint32_t) * 1.5 * 8192,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
-    lsVertices.resize(8192);
-    lsIndices.resize(1.5 * 8192);
-
     std::array<Vertex, 6> axesVerts;
     axesVerts[0].position = {0, 0, 0};
     axesVerts[1].position = {0, 0, 0};
@@ -190,6 +186,7 @@ void Renderer::init(RenderConfig config) {
 
     lSystem.addRule("1", "11");
     lSystem.addRule("0", "1[0]0");
+    lSystem.generate();
 
     isInitialized = true;
 }
@@ -240,7 +237,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
         destroyBuffer(currentFrame.indexBuffer);
 
         currentFrame.vertexBuffer =
-            createBuffer(sizeof(Vertex) * vertexCount,
+            createBuffer(sizeof(Vertex) * lSystem.vertexCount,
                          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                              VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -255,7 +252,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
             vkGetBufferDeviceAddress(device, &addressInfo);
 
         currentFrame.indexBuffer =
-            createBuffer(sizeof(uint32_t) * indexCount,
+            createBuffer(sizeof(uint32_t) * lSystem.indexCount,
                          VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                              VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -264,8 +261,8 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
         currentFrame.bufferGeneration = stagingBufferGeneration;
     }
 
-    size_t vertexBufferSize = sizeof(Vertex) * vertexCount;
-    size_t indexBufferSize = sizeof(uint32_t) * indexCount;
+    size_t vertexBufferSize = sizeof(Vertex) * lSystem.vertexCount;
+    size_t indexBufferSize = sizeof(uint32_t) * lSystem.indexCount;
 
     immediateSubmit([&](VkCommandBuffer cmd) {
         VkBufferCopy vertexCopy;
@@ -277,7 +274,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
                         currentFrame.vertexBuffer.buffer, 1, &vertexCopy);
 
         VkBufferCopy indexCopy;
-        indexCopy.srcOffset = sizeof(Vertex) * vertexCount;
+        indexCopy.srcOffset = sizeof(Vertex) * lSystem.vertexCount;
         indexCopy.dstOffset = 0;
         indexCopy.size = indexBufferSize;
 
@@ -378,7 +375,7 @@ void Renderer::draw(ImDrawData *imGuiDrawData) {
     vkCmdBindIndexBuffer(cmd, currentFrame.indexBuffer.buffer, 0,
                          VK_INDEX_TYPE_UINT32);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, linePipeline);
-    vkCmdDrawIndexed(cmd, indexCount, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, lSystem.indexCount, 1, 0, 0, 0);
 
     vkCmdEndRendering(cmd);
 
@@ -492,10 +489,8 @@ void Renderer::run() {
                          lSystem.vertices.size(), lSystem.indices.size());
         }
 
-        generateLSystem(tmpAngle);
-
-        size_t lsSize =
-            sizeof(Vertex) * vertexCount + sizeof(uint32_t) * indexCount;
+        size_t lsSize = sizeof(Vertex) * lSystem.vertices.size() +
+                        sizeof(uint32_t) * lSystem.indices.size();
         size_t stagingBufferSize = stagingBuffer.allocationInfo.size;
         if (lsSize > stagingBufferSize) {
             destroyBuffer(stagingBuffer);
@@ -507,9 +502,10 @@ void Renderer::run() {
 
         // upload l-system points
         void *data = stagingBuffer.allocationInfo.pMappedData;
-        memcpy(data, lsVertices.data(), sizeof(Vertex) * vertexCount);
-        memcpy((char *)data + sizeof(Vertex) * vertexCount, lsIndices.data(),
-               sizeof(uint32_t) * indexCount);
+        memcpy(data, lSystem.vertices.data(),
+               sizeof(Vertex) * lSystem.vertexCount);
+        memcpy((char *)data + sizeof(Vertex) * lSystem.vertexCount,
+               lSystem.indices.data(), sizeof(uint32_t) * lSystem.indexCount);
 
         ImDrawData *drawData = updateGui();
         draw(drawData);
@@ -652,9 +648,9 @@ ImDrawData *Renderer::updateGui() {
     // ImGui::Text("cpu frame time: %2.2f ms (%4.0f fps)", avgFrameTime,
     //             1000 / avgFrameTime);
 
-    ImGui::Text("L-system string length: %d", lsStringLength);
-    ImGui::Text("vertex count: %lu", vertexCount);
-    ImGui::Text("index count (with restarts): %lu", indexCount);
+    ImGui::Text("L-system string length: %lu", lSystem.result.length());
+    ImGui::Text("vertex count: %d", lSystem.vertexCount);
+    ImGui::Text("index count (with restarts): %d", lSystem.indexCount);
 
     ImGui::DragFloat("x angle", &tmpAngle.x);
     ImGui::DragFloat("y angle", &tmpAngle.y);
@@ -1287,95 +1283,5 @@ void Renderer::printMat4(glm::mat4 m) {
 
 std::string Renderer::vec3ToString(glm::vec3 v) {
     return fmt::format("{: .2f} {: .2f} {: .2f}", v[0], v[1], v[2]);
-}
-
-void Renderer::generateLSystem(glm::vec3 rotation) {
-    glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.x),
-                                 glm::vec3(1, 0, 0));
-    glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.y),
-                                 glm::vec3(0, 1, 0));
-    glm::mat4 rotZ = glm::rotate(glm::mat4(1.0f), glm::radians(rotation.z),
-                                 glm::vec3(0, 0, 1));
-    glm::mat4 rot = rotY * rotX * rotZ;
-    glm::mat4 rotInv = glm::transpose(rot);
-
-    std::map<char, glm::mat4> variables{
-        {'0', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
-        {'1', glm::translate(glm::mat4(1.0f), glm::vec3(0.01, 0, 0))},
-        {'[', rot},
-        {']', rotInv},
-    };
-    std::map<char, std::string> rules{{'1', "11"}, {'0', "1[0]0"}};
-    std::string axiom = "0";
-    std::string result = axiom;
-
-    for (int i = 0; i < lsIterationCount; i++) {
-        std::string next = "";
-
-        for (const auto &c : result) {
-            auto it = rules.find(c);
-
-            if (it != rules.end()) {
-                next += rules[c];
-            } else {
-                next += c;
-            }
-        }
-        result = next;
-    }
-
-    lsStringLength = result.length();
-
-    if (lsStringLength > lsVertices.size()) {
-        lsVertices.resize(lsStringLength);
-        lsIndices.resize(1.5 * lsStringLength);
-    }
-
-    glm::mat4 currTransform = glm::mat4(1.0f);
-    vertexCount = 0;
-    indexCount = 0;
-    size_t i = 0;
-
-    lsVertices[vertexCount++] =
-        Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}};
-
-    lsIndices[i++] = indexCount;
-
-    std::stack<glm::mat4> stack;
-
-    for (const auto &c : result) {
-        if (c == '[') {
-            stack.push(currTransform);
-        }
-
-        if (c == ']') {
-            currTransform = stack.top();
-            stack.pop();
-            lsIndices[i++] = 0xFFFFFFFF;
-        }
-
-        currTransform *= variables[c];
-        glm::vec3 currPosition = currTransform * glm::vec4(0, 0, 0, 1);
-
-        if (currPosition != lsVertices[vertexCount - 1].position) {
-            lsVertices[vertexCount++] =
-                Vertex{.position = currPosition, .color = {1, 1, 1, 1}};
-
-            indexCount++;
-            lsIndices[i++] = indexCount;
-        }
-    }
-
-    indexCount = i;
-
-    glm::vec3 avgPos{0};
-    for (int i = 0; i < vertexCount; i++) {
-        avgPos += lsVertices[i].position;
-    }
-    avgPos /= vertexCount;
-
-    for (int i = 0; i < vertexCount; i++) {
-        lsVertices[i].position -= avgPos;
-    }
 }
 } // namespace lsv

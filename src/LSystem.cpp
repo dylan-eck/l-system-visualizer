@@ -23,9 +23,11 @@ void LSystem::generate() {
 
         glm::mat4 transform =
             glm::translate(glm::mat4(1.0f), t) *
-            glm::rotate(glm::mat4(1.0f), r.y, glm::vec3(0, 1, 0)) *
-            glm::rotate(glm::mat4(1.0f), r.x, glm::vec3(1, 0, 0)) *
-            glm::rotate(glm::mat4(1.0f), r.z, glm::vec3(0, 0, 1));
+            glm::rotate(glm::mat4(1.0f), glm::radians(r.y),
+                        glm::vec3(0, 1, 0)) *
+            glm::rotate(glm::mat4(1.0f), glm::radians(r.x),
+                        glm::vec3(1, 0, 0)) *
+            glm::rotate(glm::mat4(1.0f), glm::radians(r.z), glm::vec3(0, 0, 1));
 
         varMap.insert({var, transform});
     }
@@ -53,9 +55,12 @@ void LSystem::generate() {
     }
 
     glm::mat4 currTransform = glm::mat4(1.0f);
-    int vertexCount = 0;
-    int indexCount = 0;
+    vertexCount = 0;
+    indexCount = 0;
     size_t i = 0;
+
+    vertices.resize(8192);
+    indices.resize(8192);
 
     vertices[vertexCount++] =
         Vertex{.position = {0, 0, 0}, .color = {1, 1, 1, 1}};
@@ -88,8 +93,6 @@ void LSystem::generate() {
     }
 
     indexCount = i;
-    vertices.resize(vertexCount);
-    indices.resize(indexCount);
 
     glm::vec3 avgPos{0};
     for (const auto &v : vertices) {

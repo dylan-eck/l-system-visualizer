@@ -29,9 +29,11 @@ public:
     std::string axiom;
     std::vector<LSVariable> variables;
     std::vector<LSRule> rules;
-    uint32_t iterationCount;
+    int iterationCount;
 
     std::string result;
+    int vertexCount;
+    int indexCount;
     std::vector<Vertex> vertices = std::vector<Vertex>(8192);
     std::vector<uint32_t> indices = std::vector<uint32_t>(8192);
     std::stack<glm::mat4> stack;
