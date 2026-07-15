@@ -102,6 +102,7 @@ private:
     void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);
 
     void initImgui();
+    ImDrawData *updateGui();
 
     void createDrawImage();
     void destroyDrawImage();
