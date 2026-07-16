@@ -673,10 +673,10 @@ ImDrawData *Renderer::updateGui() {
         ImGui::TableSetupColumn("z", ImGuiTableColumnFlags_WidthStretch, 0.3f);
 
         auto floatInput = [](int colIdx, const char *id, float &val,
-                             bool &updated) {
+                             bool &updated, float speed = 1.0f) {
             ImGui::TableSetColumnIndex(colIdx);
             ImGui::SetNextItemWidth(-FLT_MIN);
-            if (ImGui::DragFloat(id, &val) &&
+            if (ImGui::DragFloat(id, &val, speed) &&
                 !ImGui::TempInputIsActive(ImGui::GetItemID())) {
                 updated = true;
             }
@@ -693,9 +693,12 @@ ImDrawData *Renderer::updateGui() {
             ImGui::InputText("##var", &var);
             lSystem.vertsStale |= ImGui::IsItemDeactivatedAfterEdit();
 
-            floatInput(1, "##tx", transform.translate.x, lSystem.vertsStale);
-            floatInput(2, "##ty", transform.translate.y, lSystem.vertsStale);
-            floatInput(3, "##tz", transform.translate.z, lSystem.vertsStale);
+            floatInput(1, "##tx", transform.translate.x, lSystem.vertsStale,
+                       0.001f);
+            floatInput(2, "##ty", transform.translate.y, lSystem.vertsStale,
+                       0.001f);
+            floatInput(3, "##tz", transform.translate.z, lSystem.vertsStale,
+                       0.001f);
 
             ImGui::TableNextRow();
 
