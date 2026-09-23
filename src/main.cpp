@@ -1,13 +1,14 @@
+#include "Renderer.h"
+#include "RendererTypes.h"
+
 #ifdef LSV_PLATFORM_WINDOWS // this is needed for building on windows
 #include <SDL.h>
 #endif
-
-#include <stdexcept>
-#include <filesystem>
-
 #include <spdlog/spdlog.h>
 
-#include "Renderer.h"
+#include <cstdlib>
+#include <filesystem>
+#include <stdexcept>
 
 int main(int argc, char *argv[]) {
 #ifndef NDEBUG

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vector>
-
 #include <vulkan/vulkan.h>
+
+#include <vector>
 
 namespace lsv {
 class PipelineBuilder {

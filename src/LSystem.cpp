@@ -1,8 +1,14 @@
-#include <map>
+#include "LSystem.h"
 
+#include "RendererTypes.h"
+
+#include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "LSystem.h"
+#include <cstddef>
+#include <map>
+#include <stack>
+#include <string>
 
 namespace lsv {
 void LSystem::addVariable(std::string character,

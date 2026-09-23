@@ -1,17 +1,23 @@
 #pragma once
 
+#include "LSystem.h"
+#include "RendererTypes.h"
+
+#include <glm/glm.hpp>
+#include <imgui.h>
+#include <vk_mem_alloc.h>
+#include <vulkan/vulkan.h>
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <deque>
 #include <functional>
 #include <span>
-#include <vector>
 #include <string>
-#include <deque>
+#include <vector>
 
-#include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h>
-#include <imgui.h>
-
-#include "RendererTypes.h"
-#include "LSystem.h"
+struct SDL_Window;
 
 namespace lsv {
 constexpr unsigned int FRAMES_IN_FLIGHT = 2;
@@ -32,7 +38,7 @@ private:
     bool isInitialized{false};
     bool stopRendering{false};
 
-    struct SDL_Window *window{nullptr};
+    SDL_Window *window{nullptr};
 
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;

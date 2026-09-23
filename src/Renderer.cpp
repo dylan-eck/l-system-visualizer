@@ -1,35 +1,45 @@
-#include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <fstream>
-#include <iostream>
-#include <numeric>
-#include <stdexcept>
-#include <vector>
-#include <chrono>
+#include "Renderer.h"
 
-#include <spdlog/spdlog.h>
-#include <SDL2/SDL.h>
+#include "LSystem.h"
+#include "PipelineBuilder.h"
+#include "RendererTypes.h"
+
+#include <SDL.h>
 #include <SDL_vulkan.h>
+#include <VkBootstrap.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_vulkan.h>
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
-#include <vulkan/vulkan.h>
+#include <spdlog/fmt/fmt.h>
+#include <spdlog/spdlog.h>
 #include <vulkan/vk_enum_string_helper.h>
-#include <VkBootstrap.h>
+#include <vulkan/vulkan.h>
+// vk_mem_alloc.h was already pulled in above for its declarations; this second
+// include, with VMA_IMPLEMENTATION defined, emits the library's implementation.
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/ext.hpp>
 
-#include "Renderer.h"
-#include "PipelineBuilder.h"
-
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/string_cast.hpp>
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <fstream>
+#include <functional>
+#include <ios>
+#include <numeric>
+#include <ratio>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #define VK_CHECK(x)                                                            \
     do {                                                                       \

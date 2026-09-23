@@ -16,6 +16,10 @@ elseif(WIN32)
   target_compile_definitions(${PROJECT_NAME} PRIVATE LSV_PLATFORM_WINDOWS)
 endif()
 
+# Must be visible to every translation unit that includes any glm header, so it
+# is set here rather than with a #define before a single include.
+target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_FORCE_DEPTH_ZERO_TO_ONE)
+
 target_compile_options(${PROJECT_NAME} PRIVATE -Wno-nullability-completeness
                                                -Wno-nullability-extension)
 

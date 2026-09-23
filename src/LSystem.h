@@ -1,9 +1,13 @@
-#include <string>
-#include <stack>
+#pragma once
+
+#include "RendererTypes.h"
 
 #include <glm/glm.hpp>
 
-#include "RendererTypes.h"
+#include <cstdint>
+#include <stack>
+#include <string>
+#include <vector>
 
 namespace lsv {
 struct LSVariable {

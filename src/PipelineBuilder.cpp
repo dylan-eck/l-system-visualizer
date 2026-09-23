@@ -1,7 +1,8 @@
-#include <spdlog/spdlog.h>
-#include <vulkan/vk_enum_string_helper.h>
-
 #include "PipelineBuilder.h"
+
+#include <vulkan/vulkan.h>
+
+#include <cstdint>
 
 namespace lsv {
 void PipelineBuilder::clear() {
